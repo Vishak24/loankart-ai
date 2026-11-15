@@ -247,14 +247,11 @@ def test_a_clean_pdf_is_accepted_and_hostile_ones_are_refused_and_not_kept(clien
         assert len(stored_uploads(db_path)) == kept, f"{name}: a refused file was left on disk"
 
 
-def test_a_large_scan_full_of_random_bytes_is_not_mistaken_for_a_script(client):
+def test_a_bare_js_byte_pattern_in_scan_data_is_not_mistaken_for_a_script(client):
+    """Compressed image streams contain "/JS" by chance about once per 15 MB; only a real "/S /JavaScript" action counts."""
     ok(client.post("/api/demo/load", json={"scenario_id": "tiruppur_textile"}))
-    for seed in range(8):                           # random "image" data inside a PDF, as in a multi-MB scanned statement
-        import random
-        noise = random.Random(seed).randbytes(2_000_000).replace(b"/JavaScript", b"").replace(b"/Launch", b"") \
-            .replace(b"/Encrypt", b"").replace(b"/EmbeddedFile", b"").replace(b"/RichMedia", b"") \
-            .replace(b"/SubmitForm", b"").replace(b"/ImportData", b"").replace(b"%%EOF", b"")
-        assert upload(client, pdf(extra=b"/Junk (" + noise + b")")).status_code == 201, seed
+    assert upload(client, pdf(extra=b"/Junk (\x00/JS \x01/JS)\x02")).status_code == 201
+    assert upload(client, pdf(extra=b"/S /JavaScript /JS (app.alert(1))")).status_code == 422
 
 
 def test_parsing_is_time_limited_and_a_timeout_removes_the_file(client, db_path, monkeypatch):
