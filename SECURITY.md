@@ -48,9 +48,9 @@ Enable the hook once per clone: `git config core.hooksPath .githooks` (needs [gi
 
 ## Deployment checklist (not done by this repository)
 
-1. Serve the frontend and `/api` from **one site** over HTTPS (reverse proxy). Cookies are `SameSite=Lax`, so a front end on a different site will not stay signed in.
+1. Serve the frontend and `/api` from **one site** over HTTPS. Cookies are `SameSite=Lax`, so a front end on a different site will not stay signed in. On Cloudflare Pages this is `frontend/functions/api/[[path]].ts`, a reverse proxy to the backend named by the Pages variable `LOANKART_BACKEND_URL` (leave `VITE_API_BASE_URL` unset). Only the production origin `LOANKART_CORS_ORIGINS` lists can make writes: Pages preview URLs are refused by the CSRF check.
 2. Set the production variables above; never put values in `.env.example`.
-3. Put the proxy's own request-size and rate limits in front, and set `LOANKART_TRUST_PROXY=1` there only.
+3. Put the proxy's own request-size and rate limits in front, and set `LOANKART_TRUST_PROXY=1` there only. Behind the Pages proxy the backend sees Cloudflare's egress address, not the visitor's, so per-client rate limits are shared between visitors.
 4. Run **one** backend process: rate-limit counters and the investigation job live in process memory.
 5. Rotate any provider key that has ever sat in a file other than `backend/.env`.
 

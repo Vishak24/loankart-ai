@@ -56,3 +56,6 @@ tmp/
 .claude/
 graphify-out/
 *.docx
+
+# Cloudflare Wrangler local state
+.wrangler/
