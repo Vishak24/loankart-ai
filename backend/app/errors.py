@@ -9,8 +9,12 @@ class Conflict(Exception):
     """409: the request is valid but the case is not in a state that allows it."""
 
 
+class Unauthorized(Exception):
+    """401: no valid session for this request."""
+
+
 class Forbidden(Exception):
-    """403"""
+    """403: signed in, but not allowed to see this."""
 
 
 class BadInput(Exception):

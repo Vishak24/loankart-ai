@@ -7,8 +7,13 @@ import {
 const post = (data?: unknown): RequestInit => ({ method: "POST", body: data === undefined ? undefined : JSON.stringify(data) });
 const put = (data: unknown): RequestInit => ({ method: "PUT", body: JSON.stringify(data) });
 const c = (caseId: string) => `/api/cases/${encodeURIComponent(caseId)}`;
-// shortcut: a role header stands in for sign-in in this prototype (see backend/app/routes.py advisor_role).
-const asAdvisor = (init: RequestInit = {}): RequestInit => ({ ...init, headers: { ...init.headers, "X-LoanKart-Role": "advisor" } });
+
+/** Advisor sign-in. The session is an HttpOnly cookie; the passcode is checked by the server only. */
+export const authService = {
+  me: () => request<S["SessionOut"]>("/api/auth/me"),
+  login: (password: string) => request<S["SessionOut"]>("/api/auth/advisor/login", post({ password })),
+  logout: () => request<S["SessionOut"]>("/api/auth/logout", post()),
+};
 
 export const caseService = {
   open: (borrowerId: string, intent: "new" | "rejected") => request<Case>("/api/cases", post({ borrower_id: borrowerId, intent })),
@@ -46,7 +51,7 @@ export const calculationService = {
 
 export const lenderCatalogService = {
   list: () => request<LenderProduct[]>("/api/lenders"),
-  update: (product: LenderProduct) => request<LenderProduct>(`/api/lenders/${product.id}`, asAdvisor(put(product))),
+  update: (product: LenderProduct) => request<LenderProduct>(`/api/lenders/${product.id}`, put(product)),
 };
 
 export const recommendationService = {
@@ -66,18 +71,18 @@ export const applicationService = {
 };
 
 export const advisorService = {
-  queue: (status: string) => request<S["AdvisorCaseRow"][]>(`/api/advisor/cases?status=${status}`, asAdvisor()),
-  detail: (id: string) => request<S["AdvisorCaseDetail"]>(`/api/advisor/cases/${encodeURIComponent(id)}`, asAdvisor()),
+  queue: (status: string) => request<S["AdvisorCaseRow"][]>(`/api/advisor/cases?status=${status}`),
+  detail: (id: string) => request<S["AdvisorCaseDetail"]>(`/api/advisor/cases/${encodeURIComponent(id)}`),
   act: (id: string, action: S["AdvisorActionIn"]) =>
-    request<S["AdvisorCaseDetail"]>(`/api/advisor/cases/${encodeURIComponent(id)}/actions`, asAdvisor(post(action))),
-  knowledge: () => request<S["KnowledgeEntry"][]>("/api/knowledge", asAdvisor()),
-  capture: (input: S["KnowledgeCaptureIn"]) => request<S["KnowledgeEntry"]>("/api/knowledge", asAdvisor(post(input))),
+    request<S["AdvisorCaseDetail"]>(`/api/advisor/cases/${encodeURIComponent(id)}/actions`, post(action)),
+  knowledge: () => request<S["KnowledgeEntry"][]>("/api/knowledge"),
+  capture: (input: S["KnowledgeCaptureIn"]) => request<S["KnowledgeEntry"]>("/api/knowledge", post(input)),
   review: (id: string, decision: "approve" | "reject") =>
-    request<S["KnowledgeEntry"]>(`/api/knowledge/${id}/review`, asAdvisor(post({ decision }))),
+    request<S["KnowledgeEntry"]>(`/api/knowledge/${id}/review`, post({ decision })),
   transcribe: (audio: Blob, filename: string) => {
     const form = new FormData();
     form.append("file", audio, filename);
-    return request<S["TranscriptOut"]>("/api/ai/transcribe", asAdvisor({ method: "POST", body: form }));
+    return request<S["TranscriptOut"]>("/api/ai/transcribe", { method: "POST", body: form });
   },
 };
 

@@ -1,19 +1,28 @@
 // Frontend <-> backend integration check through the Vite dev proxy (the path the browser uses), in mock mode.
 // Walks the whole borrower journey and checks the response fields the pages read.
-// Usage: node scripts/check-journey.mjs [frontendUrl]   (default http://127.0.0.1:5173). Resets demo data first and last.
+// Usage: LOANKART_ADVISOR_PASSWORD=... node scripts/check-journey.mjs [frontendUrl]   (default http://127.0.0.1:5173).
+// Resets demo data first and last, so point it at a throw-away backend, not one holding data you want to keep.
+// Sessions are HttpOnly cookies; Node's fetch has no cookie jar, so two small jars stand in for two browsers:
+// a borrower's (granted by opening the demo case) and an advisor's (granted by the passcode).
 import assert from "node:assert/strict";
 
 const base = process.argv[2] ?? "http://127.0.0.1:5173";
 const CASE = "case-tiruppur-textile";
 let step = 0;
 
-async function call(method, path, body, headers = {}) {
-  const res = await fetch(base + path, { method, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...headers }, body: body && JSON.stringify(body) });
+const passcode = process.env.LOANKART_ADVISOR_PASSWORD;
+assert.ok(passcode, "Set LOANKART_ADVISOR_PASSWORD to the backend's advisor passcode.");
+const borrower = new Map(), advisor = new Map(), stranger = new Map();
+
+async function call(method, path, body, headers = {}, jar = borrower) {
+  const cookie = [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+  const res = await fetch(base + path, { method, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers }, body: body && JSON.stringify(body) });
+  for (const c of res.headers.getSetCookie()) { const [pair] = c.split(";"); const i = pair.indexOf("="); const v = pair.slice(i + 1); v ? jar.set(pair.slice(0, i), v) : jar.delete(pair.slice(0, i)); }
   const type = res.headers.get("content-type") ?? "";
   return { status: res.status, body: type.includes("json") ? await res.json() : await res.arrayBuffer(), type };
 }
-async function ok(method, path, body, headers, status = 200) {
-  const r = await call(method, path, body, headers);
+async function ok(method, path, body, headers, status = 200, jar = borrower) {
+  const r = await call(method, path, body, headers, jar);
   assert.equal(r.status, status, `${method} ${path} -> ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
   console.log(`ok  ${String(++step).padStart(2)}  ${method.padEnd(4)} ${path}`);
   return r.body;
@@ -23,12 +32,16 @@ const has = (obj, keys) => keys.forEach((k) => assert.ok(k in obj, `missing fiel
 const page = await fetch(base + "/case/x/investigation");
 assert.equal(page.status, 200); assert.match(await page.text(), /<div id="root">/);
 await ok("GET", "/health");
-await ok("POST", "/api/demo/reset");
+assert.equal((await call("POST", "/api/auth/advisor/login", { password: "wrong" }, {}, advisor)).status, 401);
+await ok("POST", "/api/auth/advisor/login", { password: passcode }, undefined, 200, advisor);
+await ok("POST", "/api/demo/reset", undefined, undefined, 200, advisor);
+assert.equal((await call("POST", "/api/demo/reset")).status, 401);          // a visitor cannot wipe the demo
 
 const c = await ok("POST", "/api/demo/load", { scenario_id: "tiruppur_textile" });
 has(c, ["id", "borrower", "stages", "consents", "escalation", "ai_mode", "is_synthetic"]);
 assert.equal(c.ai_mode, "mock");
 
+assert.equal((await call("GET", `/api/cases/${CASE}/documents`, undefined, {}, stranger)).status, 401);   // another browser has no access
 const docs = await ok("GET", `/api/cases/${CASE}/documents`);
 assert.equal(docs.length, 48); has(docs[0], ["group", "title", "status", "url", "checks", "warnings"]);
 const pdf = await call("GET", docs[0].url);
@@ -72,13 +85,12 @@ app = await ok("POST", `/api/cases/${CASE}/application/advance`);
 assert.equal(app.status, "offer_generated"); assert.ok(app.events.every((e) => e.simulated));
 
 await ok("POST", `/api/cases/${CASE}/escalate`, { reason: "Integration check" });
-const advisor = { "X-LoanKart-Role": "advisor" };
-assert.equal((await call("GET", "/api/advisor/cases")).status, 403);
-const queue = await ok("GET", "/api/advisor/cases?status=escalated", undefined, advisor);
+assert.equal((await call("GET", "/api/advisor/cases")).status, 401);      // the borrower's session is not an advisor's
+const queue = await ok("GET", "/api/advisor/cases?status=escalated", undefined, undefined, 200, advisor);
 assert.equal(queue[0].case_id, CASE);
-has(await ok("GET", `/api/advisor/cases/${CASE}`, undefined, advisor), ["case", "investigation", "restructure", "recommendations", "application", "comments", "audit", "correctable"]);
-has(await ok("GET", "/api/demo/state"), ["ai_mode", "cases", "application_events", "lenders", "products"]);
+has(await ok("GET", `/api/advisor/cases/${CASE}`, undefined, undefined, 200, advisor), ["case", "investigation", "restructure", "recommendations", "application", "comments", "audit", "correctable"]);
+has(await ok("GET", "/api/demo/state", undefined, undefined, 200, advisor), ["ai_mode", "cases", "application_events", "lenders", "products"]);
 has(await ok("GET", "/api/ai/status"), ["mode", "effective_mode", "providers", "note"]);
-await ok("POST", "/api/demo/reset");
+await ok("POST", "/api/demo/reset", undefined, undefined, 200, advisor);
 
 console.log("\nJourney check passed: frontend proxy and backend agree on every step, in mock mode, with no API keys.");

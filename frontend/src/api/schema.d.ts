@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whoami */
+        get: operations["whoami_api_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/advisor/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advisor Login */
+        post: operations["advisor_login_api_auth_advisor_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/borrower": {
         parameters: {
             query?: never;
@@ -1047,18 +1098,12 @@ export interface components {
         };
         /** Body_transcribe_api_ai_transcribe_post */
         Body_transcribe_api_ai_transcribe_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_upload_document_api_cases__case_id__documents_post */
         Body_upload_document_api_cases__case_id__documents_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** BorrowerOut */
@@ -1897,6 +1942,11 @@ export interface components {
          * @enum {string}
          */
         LoanPurpose: "working_capital" | "inventory" | "machinery_equipment" | "business_expansion" | "debt_consolidation" | "other";
+        /** LoginIn */
+        LoginIn: {
+            /** Password */
+            password: string;
+        };
         /** MissingDocument */
         MissingDocument: {
             /** Doc Type */
@@ -2498,6 +2548,20 @@ export interface components {
              */
             priority: "balanced" | "lowest_emi" | "lowest_cost" | "no_collateral" | "fastest";
         };
+        /** SessionOut */
+        SessionOut: {
+            /** Advisor */
+            advisor: boolean;
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "development" | "production";
+            /** Public Demo */
+            public_demo: boolean;
+            /** Demo Tools */
+            demo_tools: boolean;
+        };
         /** TaskOut */
         TaskOut: {
             /** Key */
@@ -2606,6 +2670,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -2632,6 +2700,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    whoami_api_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+        };
+    };
+    advisor_login_api_auth_advisor_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
                 };
             };
         };
@@ -3337,9 +3478,7 @@ export interface operations {
     update_lender_product_api_lenders__product_id__put: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path: {
                 product_id: string;
             };
@@ -3733,9 +3872,7 @@ export interface operations {
             query?: {
                 status?: string | null;
             };
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3764,9 +3901,7 @@ export interface operations {
     advisor_case_api_advisor_cases__case_id__get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path: {
                 case_id: string;
             };
@@ -3797,9 +3932,7 @@ export interface operations {
     advisor_action_api_advisor_cases__case_id__actions_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path: {
                 case_id: string;
             };
@@ -3834,9 +3967,7 @@ export interface operations {
     list_knowledge_api_knowledge_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3851,23 +3982,12 @@ export interface operations {
                     "application/json": components["schemas"]["KnowledgeEntry"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     capture_knowledge_api_knowledge_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3900,9 +4020,7 @@ export interface operations {
     review_knowledge_api_knowledge__entry_id__review_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path: {
                 entry_id: string;
             };
@@ -4010,9 +4128,7 @@ export interface operations {
     transcribe_api_ai_transcribe_post: {
         parameters: {
             query?: never;
-            header?: {
-                "x-loankart-role"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };

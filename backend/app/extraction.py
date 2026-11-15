@@ -169,3 +169,45 @@ def extract_document(path: Path) -> dict[str, Any]:
     except Exception as exc:  # unreadable or corrupt file: report it, never crash the investigation
         return {"doc_type": None, "issuer": None, "fields": {}, "rows": [], "checks": [],
                 "warnings": [f"Could not read this file: {exc.__class__.__name__}."]}
+
+
+# ---------------------------------------------------------------------------------------------- uploaded files
+
+MAX_PDF_PAGES = 25
+WORKER_TIMEOUT_S = 20
+# Active content a financial document never needs. A heuristic on the raw bytes: names can be obfuscated, which is why
+# the file is also parsed in an isolated process and served without being executed server-side.
+_ACTIVE = re.compile(rb"/(?:JavaScript|JS|Launch|EmbeddedFile|RichMedia|SubmitForm|ImportData|Encrypt)(?![A-Za-z0-9])")
+
+
+def validate_pdf_bytes(content: bytes) -> None:
+    """Cheap structural checks before anything is written or parsed. Raises ValueError with a message for the user."""
+    if not content.startswith(b"%PDF-") or b"%%EOF" not in content[-2048:]:
+        raise ValueError("Only complete PDF files are accepted.")
+    if _ACTIVE.search(content):
+        raise ValueError("This PDF contains scripts, attachments or encryption, which are not accepted.")
+
+
+def extract_upload(path: Path) -> dict[str, Any]:
+    """extract_document for files from outside: same result, run in an isolated process with a time limit.
+    Raises ValueError for a PDF that breaks the limits (too many pages, too slow, damaged, locked)."""
+    import json
+    import os
+    import subprocess
+    import sys
+
+    worker = Path(__file__).with_name("extraction_worker.py")
+    try:
+        done = subprocess.run([sys.executable, "-I", str(worker), str(path), str(MAX_PDF_PAGES)], capture_output=True,
+                              timeout=WORKER_TIMEOUT_S, env={"PATH": os.environ.get("PATH", "")}, check=False)
+    except subprocess.TimeoutExpired:
+        raise ValueError("The PDF took too long to read and was rejected.") from None
+    try:
+        result = json.loads(done.stdout[:5_000_000] or b"null")
+    except ValueError:
+        result = None
+    if not isinstance(result, dict):
+        raise ValueError("The PDF could not be read safely and was rejected.")
+    if "error" in result:
+        raise ValueError(str(result["error"]))
+    return result

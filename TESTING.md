@@ -3,14 +3,16 @@
 ## Commands
 
 ```bash
-cd backend && .venv/bin/pytest -q            # backend: 123 tests, about 50 seconds
+cd backend && .venv/bin/pytest -q            # backend: 159 tests, about 55 seconds
 cd frontend && npm test                      # frontend unit tests: 11
 cd frontend && npm run build                 # TypeScript type-check and production build
-cd frontend && npm run check:journey         # integration: 32 steps through the Vite proxy (both servers running)
+cd frontend && LOANKART_ADVISOR_PASSWORD=... npm run check:journey -- <frontend url>   # integration: 33 steps through the Vite proxy
 cd frontend && npm run gen:types             # regenerate TypeScript types from the backend's OpenAPI contract
 ```
 
-`check:journey` resets demo data before and after it runs.
+`check:journey` **resets demo data** before and after it runs and signs in as an advisor, so run it against a throw-away backend
+(temporary `LOANKART_DB_PATH`, its own ports, a test passcode), never one holding data you want to keep. It keeps a borrower
+cookie jar and an advisor cookie jar, because the sessions are `HttpOnly` cookies.
 
 ## Backend tests (`backend/tests/`)
 
@@ -20,9 +22,12 @@ cd frontend && npm run gen:types             # regenerate TypeScript types from 
 | `test_engines.py` | 47 | Layer separation (investigation code cannot import the ground truth); dataset coherence for all six scenarios; PDFs are real and regenerate byte-identically; every transaction survives the PDF round trip; analysis reproduces ground truth from documents alone; finding structure and wording; all nine lender decisions reachable; ranking determinism; recovery plan; Sarvam Vision output (Markdown or HTML) reaching the parser |
 | `test_api.py` | 19 | Milestone-1 borrower API: validation, persistence, CORS |
 | `test_journey.py` | 2 | The 17 acceptance steps through the API in mock mode, run twice from reset with identical results; reset restores the initial state |
+| `test_security.py` | 36 | Sessions and forged/expired/tampered cookies; every route requires a session unless on the public list (walks the OpenAPI table); the old role header grants nothing; borrower isolation across profile, case and document; borrower-only journey; rate limits (login, AI per client and daily, upload, create, default, forwarded-header handling); upload hardening (scripts, attachments, encryption, truncation, page cap, timeout, per-case cap, refused files deleted); body-size and chunked-body refusal; CSRF origin check; CORS; generic errors and headers; production mode (refuses unsafe start-up, hides docs, secure cookies, demo tools and shared demo off, still isolates borrowers). The suite was mutation-checked: removing a guard, a limit, the ownership check or the PDF scan each makes it fail |
 | `test_workflow_api.py` | 22 | 404/409/422 handling, upload validation and safe storage, persistence across restarts, upgrade of a milestone-1 database, a custom borrower's journey, rejection and human-review paths, Paytm consent, provider failure handling, permissions, knowledge kept apart from policy, concurrent requests, exact ground-truth comparison after a correction, refresh after answers are edited, the approval-language filter |
 
-Tests use a temporary database and file store, force mock mode and blank out any real API keys.
+Tests use a temporary database and file store, force mock mode, set a test signing key and passcode, and blank out any real API keys. The default `client` fixture is signed in as an advisor; borrower-only and anonymous behaviour is tested with separate clients.
+
+The sign-in gate and the borrower demo were also clicked through in a real browser (Chrome, mock mode, throw-away ports) after the security changes: wrong-passcode refusal, sign-in, session surviving reload, sign-out, and "Open the demo case" as a visitor with 48 documents loaded.
 
 ## Frontend tests
 
@@ -66,7 +71,7 @@ of a page would have been missed by it.
 - There are no automated browser tests; the browser checks above were manual.
 
 **By design in this prototype**
-- No sign-in. The advisor area is gated by a request header, which is not security.
+- Advisor access is one shared passcode and a signed cookie (see SECURITY.md for what that does not give you).
 - The baseline parser reads the layouts this project generates. An arbitrary real bank PDF is stored and marked "not
   recognised" unless Sarvam Vision is enabled, and that path is untested.
 - Borrowers who onboard themselves get a synthetic document pack built around their answers, not their real documents.

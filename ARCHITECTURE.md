@@ -188,4 +188,8 @@ Interactive documentation with every schema: http://127.0.0.1:8000/docs.
 - Consent is asked at the point of need: analysing documents, using payment data, sharing with a lender.
 - Sensitive actions write audit events: consents, uploads, answers, selections, submissions, escalations, advisor
   actions, policy edits, mode changes, resets.
-- The advisor routes require a role header. This is a placeholder for sign-in, not access control.
+- Access control (details in [SECURITY.md](SECURITY.md)): `security.py` holds signed `HttpOnly` cookie sessions, the access guards
+  (`case_access`, `document_access`, `borrower_access`, `require_advisor`, `require_demo_admin`), the in-memory rate limiter and
+  the HTTP middleware (body-size, CSRF origin check, security headers). Every route except a short public list declares a guard;
+  `tests/test_security.py` fails if one is missed. `LOANKART_ENV=production` turns on strict start-up validation.
+- Uploaded PDFs are parsed in a separate process (`extraction_worker.py`) with a timeout, resource limits and an empty environment.

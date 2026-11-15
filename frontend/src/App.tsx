@@ -6,6 +6,7 @@ import Options from "./case/Options";
 import Proposal from "./case/Proposal";
 import Restructure from "./case/Restructure";
 import Tracking from "./case/Tracking";
+import { AdvisorGate } from "./components/AdvisorGate";
 import Advisor from "./pages/Advisor";
 import DemoControl from "./pages/DemoControl";
 import Landing from "./pages/Landing";
@@ -26,8 +27,8 @@ export default function App() {
         <Route path="proposal" element={<Proposal />} />
         <Route path="tracking" element={<Tracking />} />
       </Route>
-      <Route path="/advisor" element={<Advisor />} />
-      <Route path="/demo-control" element={<DemoControl />} />
+      <Route path="/advisor" element={<AdvisorGate><Advisor /></AdvisorGate>} />
+      <Route path="/demo-control" element={<AdvisorGate><DemoControl /></AdvisorGate>} />
       {/* Milestone 1 addresses keep working. */}
       <Route path="/start/new" element={<Navigate to="/borrower/intake?intent=new" replace />} />
       <Route path="/start/rejected" element={<Navigate to="/borrower/intake?intent=rejected" replace />} />

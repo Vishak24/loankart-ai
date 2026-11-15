@@ -125,7 +125,8 @@ def test_inconsistent_profile_returns_422(client, patch):
 def test_data_persists_across_app_instances(db_path):
     with TestClient(create_app()) as c1:
         bid = c1.post("/api/borrowers", json=VALID).json()["id"]
-    with TestClient(create_app()) as c2:  # fresh app, same SQLite file
+    with TestClient(create_app()) as c2:  # fresh app, same SQLite file; the browser keeps its session cookie
+        c2.cookies.update(c1.cookies)
         r = c2.get(f"/api/borrowers/{bid}")
         assert r.status_code == 200
         assert r.json()["business_name"] == "Asha Tiffin Centre"

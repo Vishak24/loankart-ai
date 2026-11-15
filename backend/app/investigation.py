@@ -127,7 +127,16 @@ def run(settings: Settings, case_id: str, run_id: int, profile: dict[str, Any]) 
         out = []
         for doc in docs:
             lines = ai.document_text(Path(doc["path"]))
-            result = extraction.parse_text(lines) if lines is not None else extraction.extract_document(Path(doc["path"]))
+            if lines is not None:
+                result = extraction.parse_text(lines)
+            elif doc["source"] == "upload":           # files from outside are never parsed inside the server process
+                try:
+                    result = extraction.extract_upload(Path(doc["path"]))
+                except ValueError as exc:
+                    result = {"doc_type": None, "issuer": None, "fields": {}, "rows": [], "checks": [],
+                              "warnings": [f"Could not read this file: {exc}"]}
+            else:
+                result = extraction.extract_document(Path(doc["path"]))
             status = "extracted" if result["doc_type"] else ("failed" if "Could not read" in " ".join(result["warnings"])
                                                              else "unrecognised")
             db.set_extraction(conn, doc["id"], result, status)

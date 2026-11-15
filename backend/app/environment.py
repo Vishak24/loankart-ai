@@ -175,19 +175,32 @@ def profile_changed(conn: sqlite3.Connection, settings: Settings, borrower_id: s
     return action
 
 
+MAX_UPLOADS_PER_CASE = 20
+
+
 def add_upload(conn: sqlite3.Connection, settings: Settings, case: dict[str, Any], filename: str, content: bytes
                ) -> dict[str, Any]:
-    if not filename.lower().endswith(".pdf") or not content.startswith(b"%PDF"):
+    if not filename.lower().endswith(".pdf") or not content:
         raise BadInput("Only PDF files are accepted.")
     if len(content) > MAX_UPLOAD_BYTES:
         raise BadInput("The file is larger than 10 MB.")
+    if sum(d["source"] == "upload" for d in db.list_documents(conn, case["id"])) >= MAX_UPLOADS_PER_CASE:
+        raise BadInput(f"A case can hold at most {MAX_UPLOADS_PER_CASE} uploaded documents.")
+    try:
+        extraction.validate_pdf_bytes(content)
+    except ValueError as exc:
+        raise BadInput(str(exc)) from exc
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", Path(filename).name)[-80:]      # never trust a client path
     doc_id = f"{case['id']}--upload-{uuid.uuid4().hex[:8]}"
     folder = settings.storage_dir / "uploads" / case["id"]
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{doc_id.rsplit('--', 1)[1]}_{safe}"
     path.write_bytes(content)
-    result = extraction.extract_document(path)
+    try:
+        result = extraction.extract_upload(path)
+    except ValueError as exc:
+        path.unlink(missing_ok=True)                                         # never keep a file we refused
+        raise BadInput(str(exc)) from exc
     db.insert_document(conn, {"id": doc_id, "case_id": case["id"], "doc_type": result["doc_type"], "grp": "Uploaded by you",
                               "title": safe, "period": None, "filename": safe, "path": str(path), "source": "upload",
                               "status": "extracted" if result["doc_type"] else "unrecognised", "extraction": result})

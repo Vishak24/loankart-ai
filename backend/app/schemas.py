@@ -884,6 +884,18 @@ class AIStatus(BaseModel):
     providers: list[ProviderStatus]
 
 
+class LoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: str = Field(min_length=1, max_length=200)
+
+
+class SessionOut(BaseModel):
+    advisor: bool
+    environment: Literal["development", "production"]
+    public_demo: bool        # may a visitor open the shared synthetic demo case?
+    demo_tools: bool         # are the demo-control endpoints present on this server?
+
+
 class AIModeIn(BaseModel):
     mode: Literal["mock", "live"]
 

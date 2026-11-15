@@ -7,7 +7,7 @@ from app import integrations
 from app.integrations.base import NarrativeDraft, ProviderError
 from app.main import create_app
 from tests.test_api import VALID
-from tests.test_journey import ADVISOR, CASE, ok
+from tests.test_journey import CASE, ok
 
 
 def investigated(client, scenario="tiruppur_textile"):
@@ -88,6 +88,7 @@ def test_state_persists_across_restarts(db_path):
         base = ok(c1.get(f"/api/cases/{case_id}/restructure"))["inputs"]
         ok(c1.put(f"/api/cases/{case_id}/restructure", json={**base, "amount": 700_000}))
     with TestClient(create_app()) as c2:      # fresh app, same database and files: nothing is lost on refresh or restart
+        c2.cookies.update(c1.cookies)         # the borrower's browser still holds its session
         assert ok(c2.get(f"/api/cases/{case_id}/investigation"))["metrics"]["avg_business_receipts"] == 430_500
         assert ok(c2.get(f"/api/cases/{case_id}/restructure"))["inputs"]["amount"] == 700_000
         assert len(ok(c2.get(f"/api/cases/{case_id}/documents"))) == 48
@@ -104,7 +105,9 @@ def test_stale_database_from_milestone_one_is_upgraded(db_path):
     conn.execute("INSERT INTO borrowers VALUES ('demo-synthetic-001', 1, ?, '{}', 'x', 'x')", (json.dumps({**old, "monthly_emi": 48_500}),))
     conn.commit()
     conn.close()
+    from tests.conftest import PASSCODE
     with TestClient(create_app()) as c:
+        assert c.post("/api/auth/advisor/login", json={"password": PASSCODE}).status_code == 200
         assert ok(c.get("/api/borrowers/old1"))["business_name"] == "Asha Tiffin Centre"   # onboarding data survives
         assert ok(c.get("/api/demo/borrower"))["monthly_emi"] == 49_690                     # demo row reseeded
 
@@ -147,8 +150,8 @@ def test_application_rejected_path_and_no_lender_recovery(client):
     assert app["status"] == "under_review"
     # an edit to the simulated policy changes the simulated decision: the decision comes from the rules, not from text
     product = next(p for p in ok(client.get("/api/lenders")) if p["id"] == recs["options"][0]["product_id"])
-    assert client.put(f"/api/lenders/{product['id']}", json={**product, "min_vintage_years": 50}).status_code == 403
-    edited = ok(client.put(f"/api/lenders/{product['id']}", json={**product, "min_vintage_years": 50}, headers=ADVISOR))
+    assert TestClient(client.app).put(f"/api/lenders/{product['id']}", json={**product, "min_vintage_years": 50}).status_code == 401
+    edited = ok(client.put(f"/api/lenders/{product['id']}", json={**product, "min_vintage_years": 50}))
     assert edited["version"] == product["version"] + 1
     app = ok(client.post(f"/api/cases/{case_id}/application/advance"))
     assert app["status"] == "rejected" and app["decision_label"] == "Application rejected"
@@ -256,8 +259,8 @@ def test_grounding_check_catches_invented_figures():
 
 
 def test_speech_and_translation_degrade_honestly_in_mock_mode(client):
-    assert client.post("/api/ai/transcribe", files={"file": ("n.wav", b"RIFF", "audio/wav")}).status_code == 403
-    t = ok(client.post("/api/ai/transcribe", files={"file": ("n.wav", b"RIFF", "audio/wav")}, headers=ADVISOR))
+    assert TestClient(client.app).post("/api/ai/transcribe", files={"file": ("n.wav", b"RIFF", "audio/wav")}).status_code == 401
+    t = ok(client.post("/api/ai/transcribe", files={"file": ("n.wav", b"RIFF", "audio/wav")}))
     assert t["provider"] == "mock" and t["text"].startswith("[Mock transcript")
     tr = ok(client.post("/api/ai/translate", json={"text": "Hello", "target_language": "ta-IN"}))
     assert tr["text"] == "Hello" and tr["fallback"] is True
@@ -267,15 +270,15 @@ def test_speech_and_translation_degrade_honestly_in_mock_mode(client):
 def test_knowledge_stays_separate_from_lender_policy(client):
     case_id = investigated(client)
     before = ok(client.get("/api/lenders"))
-    entry = ok(client.post("/api/knowledge", headers=ADVISOR, json={
+    entry = ok(client.post("/api/knowledge", json={
         "text": "Borrower had one returned EMI. A written explanation with the bank's confirmation was accepted. "
                 "The lender then offered the overdraft.", "case_id": case_id, "source": "voice"}), 201)
     assert entry["status"] == "candidate" and entry["source"] == "Advisor voice note" and entry["version"] == 1
     recs = ok(client.get(f"/api/cases/{case_id}/recommendations"))
     assert all(entry["id"] not in [n["id"] for n in o["expert_notes"]] for o in recs["options"])      # inactive until approved
-    assert ok(client.post(f"/api/knowledge/{entry['id']}/review", json={"decision": "reject"}, headers=ADVISOR))["status"] == "rejected"
+    assert ok(client.post(f"/api/knowledge/{entry['id']}/review", json={"decision": "reject"}))["status"] == "rejected"
     assert ok(client.get("/api/lenders")) == before                         # official criteria untouched
-    assert client.post("/api/knowledge/nope/review", json={"decision": "approve"}, headers=ADVISOR).status_code == 404
+    assert client.post("/api/knowledge/nope/review", json={"decision": "approve"}).status_code == 404
 
 
 def test_concurrent_requests_do_not_share_or_break_connections(client):
@@ -291,7 +294,7 @@ def test_concurrent_requests_do_not_share_or_break_connections(client):
 
 def test_ground_truth_comparison_is_exact_and_not_fooled_by_corrections(client):
     case_id = investigated(client)
-    ok(client.post(f"/api/advisor/cases/{case_id}/actions", headers=ADVISOR,
+    ok(client.post(f"/api/advisor/cases/{case_id}/actions",
                    json={"type": "correct_value", "target": "emi_returns_12m", "value": 0, "note": "Bank letter"}))
     line = next(l for l in ok(client.get(f"/api/demo/ground-truth/{case_id}"))["comparison"] if l["metric"] == "EMI returns in 12 months")
     assert (line["ground_truth"], line["investigated"], line["match"]) == (1, 1, True)     # what the PDFs said

@@ -3,7 +3,8 @@ run twice to prove the demo is repeatable. Mirrors the 17 acceptance steps in th
 
 import re
 
-ADVISOR = {"X-LoanKart-Role": "advisor"}
+from fastapi.testclient import TestClient
+
 CASE = "case-tiruppur-textile"
 VOLATILE = re.compile(r'"(created_at|updated_at|started_at|finished_at|generated_at|raised_at|at)": ?"[^"]*"')
 
@@ -122,26 +123,26 @@ def journey(client) -> dict[str, str]:
     snap["application"] = stable(r)
 
     # 16: escalate to an advisor; the advisor reviews, corrects and resolves
-    assert client.get("/api/advisor/cases").status_code == 403
+    assert TestClient(client.app).get("/api/advisor/cases").status_code == 401     # a browser with no session
     escalated = ok(client.post(f"/api/cases/{CASE}/escalate", json={"reason": "I want a person to check the offer."}))
     assert escalated["escalation"]["status"] == "open" and escalated["escalation"]["summary"]["body"]
-    queue = ok(client.get("/api/advisor/cases", headers=ADVISOR))
+    queue = ok(client.get("/api/advisor/cases"))
     assert queue[0]["case_id"] == CASE and queue[0]["status"] == "escalated"
     for action in ({"type": "review_finding", "target": "emi_return", "decision": "accept", "note": "Seen in statement"},
                    {"type": "correct_value", "target": "emi_returns_12m", "value": 0, "note": "Bank confirmed a technical return"},
                    {"type": "comment", "note": "Gold OD is the right route."},
                    {"type": "review_solution", "decision": "accept", "note": "Agreed"},
                    {"type": "resolve", "note": "Explained the offer to the borrower."}):
-        detail = ok(client.post(f"/api/advisor/cases/{CASE}/actions", json=action, headers=ADVISOR))
+        detail = ok(client.post(f"/api/advisor/cases/{CASE}/actions", json=action))
     assert detail["case"]["escalation"]["status"] == "resolved" and len(detail["comments"]) == 5
     corrected = next(h for h in detail["investigation"]["headline"] if h["key"] == "emi_returns_12m")
     assert (corrected["value"], corrected["original"], corrected["state"]) == (0, 1, "corrected")
     assert any(e["title"].startswith("Advisor action") for e in detail["audit"])
-    entry = ok(client.post("/api/knowledge", headers=ADVISOR, json={
+    entry = ok(client.post("/api/knowledge", json={
         "text": "The term loan EMI was above the monthly surplus. We moved the borrower to a gold-backed overdraft. "
                 "The lender simulator made an offer after the EMI return was explained.", "case_id": CASE}), 201)
     assert entry["status"] == "candidate" and entry["approver"] is None
-    approved = ok(client.post(f"/api/knowledge/{entry['id']}/review", json={"decision": "approve"}, headers=ADVISOR))
+    approved = ok(client.post(f"/api/knowledge/{entry['id']}/review", json={"decision": "approve"}))
     assert approved["status"] == "approved" and "not lender policy" in approved["verification_status"]
 
     # demo control: forced lender events and state inspection
@@ -168,5 +169,5 @@ def test_reset_returns_to_the_initial_state(client):
                               "options": "locked", "proposal": "locked", "tracking": "locked"}
     assert case["consents"] == {"analyse_documents": False, "paytm_evidence": False, "share_with_lender": False}
     assert ok(client.get(f"/api/cases/{CASE}/documents")) == []          # packs are regenerated on demand
-    assert [k["id"] for k in ok(client.get("/api/knowledge", headers=ADVISOR))] == ["kn-seed-gold-od"]
+    assert [k["id"] for k in ok(client.get("/api/knowledge"))] == ["kn-seed-gold-od"]
     assert ok(client.get("/api/demo/state"))["application_events"] == []

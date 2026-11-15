@@ -61,7 +61,8 @@ and shows the result beside each one:
 | Sarvam speech, Sarvam Vision | No cheap check exists; they are exercised on first use and errors appear under Logs |
 | Paytm | One Settlement Summary request, if the three Paytm values are set |
 
-Or from a terminal: `curl -X POST http://127.0.0.1:8000/api/ai/check`.
+The check, the mode switch and the other `/demo-control` actions need the advisor session, so `curl` will answer 401 unless
+it carries the session cookie. Provider-spending routes are also rate limited (see SECURITY.md).
 
 To see live output in the product: Diagnosis → **Explain the findings**; Options → **Explain why this is first**;
 Tracking → **Draft a reply from my documents**; Advisor → Knowledge review → **Structure as a candidate** or the voice

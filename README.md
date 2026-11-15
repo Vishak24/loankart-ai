@@ -40,10 +40,10 @@ deterministic code**, and AI output is rejected if it mentions a figure that is 
 
 | Status | What |
 |---|---|
-| **Implemented** (runs offline, covered by tests) | Onboarding; PDF generation, extraction and analysis; investigation and findings; calculation engine; restructuring levers; lender simulator and ranking; proposal PDF; advisor workspace; SQLite persistence; demo control |
+| **Implemented** (runs offline, covered by tests) | Advisor sign-in and per-borrower access control, rate limiting, hardened uploads; onboarding; PDF generation, extraction and analysis; investigation and findings; calculation engine; restructuring levers; lender simulator and ranking; proposal PDF; advisor workspace; SQLite persistence; demo control |
 | **Simulated** (clearly labelled in the UI) | All lenders, lender rules, decisions, queries and offers; the Paytm merchant data (a synthetic fixture); application events; the document pack for self-onboarded borrowers |
 | **Integration code written, awaiting credentials** | Claude explanations; Sarvam chat, translation, speech and Vision OCR; Paytm Settlement Summary request. Each was only exercised with invalid keys (it returned the provider's authentication error). **No successful live call has been made**, so treat live mode as untested. The Paytm request is not wired into cases |
-| **Planned, not built** | Real authentication and authorisation; real lender/NBFC or Account Aggregator integrations; credit-bureau data; a Tamil interface; a durable job queue; a production database; hosted deployment |
+| **Planned, not built** | Individual accounts, MFA and a shared session store; real lender/NBFC or Account Aggregator integrations; credit-bureau data; a Tamil interface; a durable job queue; a production database; hosted deployment |
 
 LoanKart.ai has **no production Paytm integration and no live bank or NBFC integration**.
 
@@ -124,13 +124,18 @@ cd frontend && npm run dev -- --host 127.0.0.1
 
 Open http://127.0.0.1:5173. Keep the backend on `127.0.0.1`; see the security notes before binding it elsewhere.
 
+**Advisor and demo-control pages ask for a passcode.** Set `LOANKART_ADVISOR_PASSWORD` in `backend/.env` (and `LOANKART_SECRET_KEY`
+so sessions survive restarts). If you set neither, a random passcode is printed in the backend terminal at start-up.
+The borrower demo (landing page → "Open the demo case") needs no sign-in.
+
 ## Test
 
 ```bash
-cd backend && .venv/bin/pytest -q            # 123 tests: engines, API, full journey run twice from reset
+cd backend && .venv/bin/pytest -q            # 159 tests: engines, API, journey run twice from reset, security
 cd frontend && npm test                      # 11 unit tests
 cd frontend && npm run build                 # type-check + production build
-cd frontend && npm run check:journey         # 32-step journey through the dev proxy; both servers must be running
+# 33-step journey through the dev proxy. It RESETS demo data: run it against a throw-away backend (temp DB, own ports).
+cd frontend && LOANKART_ADVISOR_PASSWORD=<the backend's passcode> npm run check:journey -- http://127.0.0.1:<frontend port>
 ```
 
 Tests use a temporary database, force mock mode and blank any real API keys. Details and known gaps: [TESTING.md](TESTING.md).
@@ -145,30 +150,31 @@ workspace → reset from the demo control centre. Step-by-step script (about six
 
 ## Security and limitations
 
-**In place**
-- API keys live only in `backend/.env` / the backend environment; `.env*` is git-ignored; `/api/ai/status` never returns key values.
-- Uploads accept only `.pdf` files with a `%PDF` header up to 10 MB, are stored under a sanitised name and served only from the app's own storage directory.
-- All SQL is parameterised (the only interpolated identifiers are fixed table names).
-- CORS is an explicit allow-list (no wildcard); unexpected errors return a generic message and are logged server-side.
-- Dependencies were audited (`npm audit`, `pip-audit`) before publishing; see the pinned versions in `backend/requirements.txt`.
+Full detail, configuration and deployment checklist: **[SECURITY.md](SECURITY.md)**.
 
-**Not production-ready. Known limitations**
-- **No authentication.** Anyone who can reach the API can read any case by ID. The advisor area is guarded only by a
-  client-supplied `X-LoanKart-Role` header, which any caller can set: **that is not access control**.
-- **Demo and AI endpoints are open.** `/api/demo/*` (including reset, which wipes the database) and `/api/ai/*`
-  (which can spend Anthropic/Sarvam credits in live mode) require no sign-in, and there is no rate limiting.
-  Run it on `127.0.0.1` only, and do not expose it with live keys configured.
-- Real borrower data must not be used: there is no encryption at rest, consent ledger, retention policy or audit-grade logging.
-- PDF parsing runs in-process on uploaded files with no sandbox or page limit.
-- The investigation runs as an in-process background task and does not survive a restart mid-run.
-- Live provider calls have not been exercised end to end (see the table above).
+**Implemented** (each has automated tests in `backend/tests/test_security.py`)
+- **Advisor sign-in** with a passcode and a signed, expiring, `HttpOnly` session cookie. The old client-set role header is gone and grants nothing.
+- **Per-borrower authorisation.** A browser can only open the profile, case and documents it created; every case, document and borrower route checks this, and a test fails if any non-public route answers an anonymous request.
+- **AI endpoints** need a session (advisor-only for connectivity checks and mode changes) and are **rate limited** per client and by a daily server-wide ceiling, so a visitor cannot burn provider credits. Login, uploads and profile creation have their own limits.
+- **Demo reset and scenario tools** are advisor-only, and absent (404) in production unless explicitly enabled.
+- **Production mode** (`LOANKART_ENV=production`) refuses to start without a signing key, an advisor passcode and exact `https://` CORS origins, hides the API docs and sets `Secure` cookies and HSTS.
+- **Upload hardening:** PDF structure checks, 10 MB / 25-page / 20-per-case caps, refusal of scripts, attachments and encrypted files, and parsing in an isolated process with a timeout, resource limits and no access to API keys.
+- Request-size limits, CSRF origin check, explicit CORS, security headers, generic error messages, parameterised SQL, keys server-side only, and a commit hook that blocks secrets in `.env.example`.
 
-Before any real use you need, at minimum: real authentication and per-case authorisation, closing or protecting the
-demo and AI endpoints, rate limiting, TLS and a proper database.
+**Still not production-ready**
+- **One shared advisor passcode**: no individual accounts, MFA or per-person audit trail.
+- Sessions are stateless cookies and cannot be revoked before they expire; a borrower who loses their browser session loses access to their case.
+- Rate limits and the investigation job are in process memory: run a single backend process.
+- No encryption at rest, retention policy or consent ledger. **Do not load real borrower data.**
+- Upload scanning is heuristic and the parser is isolated at process level, not in a container.
+- No independent security review or penetration test.
+- Live provider calls (Claude, Sarvam, Paytm) have not been exercised end to end.
+
+Run it on `127.0.0.1` for demos. To expose it anywhere else, follow the deployment checklist in SECURITY.md.
 
 ## Future roadmap
 
-1. Real sign-in (OIDC), role-based access and per-case authorisation; remove the role header.
+1. Individual advisor accounts (OIDC) with MFA and a per-person audit trail, borrower sign-in with recovery, and server-side session revocation.
 2. Account Aggregator and GST/bureau data in place of synthetic documents, with a consent ledger.
 3. Real lender and NBFC integrations behind the existing simulator interface.
 4. Wire Paytm settlement data into cases once credentials are available and validated.

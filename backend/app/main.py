@@ -9,8 +9,9 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from . import db, environment
+from . import config, security
 from .config import get_settings
-from .errors import BadInput, Conflict, Forbidden, NotFound
+from .errors import BadInput, Conflict, Forbidden, NotFound, Unauthorized
 from .routes import get_conn, router
 from .schemas import HealthOut
 
@@ -19,6 +20,15 @@ log = logging.getLogger("loankart")
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    if settings.is_production:
+        problems = config.production_problems(settings)
+        if problems:                      # refuse to start rather than run production with development defaults
+            raise RuntimeError("Unsafe production configuration: " + "; ".join(problems) + ". See SECURITY.md.")
+    else:
+        log.warning("LOANKART_ENV=development: for local demos only. Do not expose this server to a network.")
+        if settings.secrets_are_ephemeral and settings.advisor_password == config._EPHEMERAL.get("passcode"):
+            log.warning("No LOANKART_ADVISOR_PASSWORD set. Advisor passcode for this run: %s  (set it in backend/.env to keep it)",
+                        settings.advisor_password)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -30,14 +40,18 @@ def create_app() -> FastAPI:
             conn.close()
         yield
 
-    app = FastAPI(title="LoanKart.ai API", version="0.2.0", lifespan=lifespan,
+    hide_docs = {"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.is_production else {}
+    app = FastAPI(title="LoanKart.ai API", version="0.2.0", lifespan=lifespan, **hide_docs,
                   description="Hackathon prototype. All lenders, borrowers and documents are synthetic.")
     app.state.settings = settings
-    app.add_middleware(
+    app.state.limiter = security.RateLimiter()          # per app instance, so each test app starts clean
+    app.middleware("http")(security.http_guard)
+    app.add_middleware(                                  # added last = outermost, so even refusals carry CORS headers
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_credentials=True,                          # the session cookie; origins above are an explicit list
         allow_methods=["GET", "POST", "PUT"],
-        allow_headers=["Content-Type", "X-LoanKart-Role"],
+        allow_headers=["Content-Type"],
     )
 
     def problem(status: int):
@@ -45,7 +59,7 @@ def create_app() -> FastAPI:
             return JSONResponse(status_code=status, content={"detail": str(exc)})
         return handler
 
-    for error, status in ((NotFound, 404), (Conflict, 409), (Forbidden, 403), (BadInput, 422)):
+    for error, status in ((NotFound, 404), (Conflict, 409), (Unauthorized, 401), (Forbidden, 403), (BadInput, 422)):
         app.add_exception_handler(error, problem(status))
 
     @app.exception_handler(Exception)

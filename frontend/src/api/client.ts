@@ -18,7 +18,7 @@ export type Application = S["ApplicationOut"];
 export type LenderProduct = S["LenderProduct"];
 export type Priority = Recommendations["priority"];
 
-export type ApiErrorKind = "network" | "notFound" | "validation" | "conflict" | "forbidden" | "server";
+export type ApiErrorKind = "network" | "notFound" | "validation" | "conflict" | "unauthorized" | "forbidden" | "rateLimited" | "server";
 
 export class ApiError extends Error {
   constructor(public kind: ApiErrorKind, message: string, public fields: Record<string, string> = {}) {
@@ -43,7 +43,8 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     const json = init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : undefined;
-    res = await fetch(BASE + path, { ...init, headers: { ...json, ...init?.headers } });
+    // credentials: the session is an HttpOnly cookie the server sets; script never sees it.
+    res = await fetch(BASE + path, { ...init, credentials: "include", headers: { ...json, ...init?.headers } });
   } catch {
     throw new ApiError("network", "network");
   }
@@ -54,7 +55,9 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const text = typeof detail === "string" ? detail : `HTTP ${res.status}`;
   if (res.status === 404) throw new ApiError("notFound", text);
   if (res.status === 409) throw new ApiError("conflict", text);
+  if (res.status === 401) throw new ApiError("unauthorized", text);
   if (res.status === 403) throw new ApiError("forbidden", text);
+  if (res.status === 429) throw new ApiError("rateLimited", text);
   if (res.status === 422 && Array.isArray(detail)) {
     // FastAPI 422: [{loc: ["body", field], msg}], or loc ["body"] for cross-field rules.
     const fields: Record<string, string> = {};

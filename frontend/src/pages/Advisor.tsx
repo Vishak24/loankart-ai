@@ -285,7 +285,7 @@ export default function Advisor() {
 
   return (
     <Layout wide>
-      <PageTitle title="Advisor workspace" lead="Review what the system found, correct it where it is wrong, and record what works." aside={<Pill tone="amber">Preview: no sign-in in this prototype</Pill>} />
+      <PageTitle title="Advisor workspace" lead="Review what the system found, correct it where it is wrong, and record what works." aside={<Pill tone="amber">Prototype: one shared passcode</Pill>} />
       <div className="grid gap-6 lg:grid-cols-12">
         <nav aria-label="Advisor sections" className="lg:col-span-2">
           <ul className="grid grid-cols-2 gap-2 lg:grid-cols-1">
