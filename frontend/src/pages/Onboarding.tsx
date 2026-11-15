@@ -28,8 +28,6 @@ function loadDraft(): Draft | null {
 const saveDraft = (d: Draft) => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)); } catch { /* storage unavailable */ } };
 const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* storage unavailable */ } };
 
-const DEMO_BORROWER_ID = "demo-synthetic-001";
-
 export default function Onboarding() {
   const t = useT();
   const navigate = useNavigate();
@@ -50,6 +48,8 @@ export default function Onboarding() {
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(isEdit ? "loading" : "idle");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadMessage, setLoadMessage] = useState<string>(t.errors.notFound);
+  const [openingDemo, setOpeningDemo] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const loadExisting = () => {
@@ -57,7 +57,26 @@ export default function Onboarding() {
     setLoadState("loading");
     api.get(editId)
       .then((b) => { setForm(fromProfile(b)); setLoadState("idle"); })
-      .catch(() => setLoadState("error"));
+      .catch((err: ApiError) => {
+        // Say why: a missing session is not a missing profile. The server's own text is safe to show.
+        setLoadMessage(err.kind === "network" ? t.errors.network : err.kind === "notFound" ? t.errors.notFound : err.message);
+        setLoadState("error");
+      });
+  };
+
+  // The shared synthetic demo borrower. Opening it through the server is what grants this browser access to it.
+  const openDemo = async () => {
+    setOpeningDemo(true);
+    setSaveError(null);
+    try {
+      const demo = await api.getDemo();
+      navigate(`/borrower/intake/${demo.id}`);
+    } catch (err) {
+      const e = err as ApiError;
+      setSaveError(e.kind === "network" ? t.errors.network : e.message);
+    } finally {
+      setOpeningDemo(false);
+    }
   };
   useEffect(loadExisting, [editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,7 +147,7 @@ export default function Onboarding() {
   const startOver = () => { clearDraft(); setForm(intent === "rejected" ? { ...emptyForm, previously_rejected: "yes" } : emptyForm); setStepId("name"); setErrors({}); };
 
   if (loadState === "loading") return <Layout><p className="text-muted">{t.common.loading}</p></Layout>;
-  if (loadState === "error") return <Layout><ErrorNotice message={t.errors.notFound} onRetry={loadExisting} /></Layout>;
+  if (loadState === "error") return <Layout><ErrorNotice message={loadMessage} onRetry={loadExisting} /></Layout>;
 
   const actionBar = (primary: ReactNode) => (
     <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur sm:static sm:mt-10 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
@@ -198,7 +217,8 @@ export default function Onboarding() {
         {index === 0 && !isEdit && (
           <button
             type="button"
-            onClick={() => navigate(`/borrower/intake/${DEMO_BORROWER_ID}`)}
+            onClick={openDemo}
+            disabled={openingDemo}
             className="mt-8 block w-full rounded-xl border border-line bg-surface p-4 text-left hover:border-teal"
           >
             <SyntheticBadge />
@@ -206,6 +226,7 @@ export default function Onboarding() {
             <span className="mt-1 block text-muted">{t.onboarding.useDemoBody}</span>
           </button>
         )}
+        {index === 0 && !isEdit && saveError && <div className="mt-4"><ErrorNotice message={saveError} /></div>}
         {index === 0 && !isEdit && (
           <p className="mt-6 text-sm text-muted">
             {t.onboarding.draftNote}{" "}

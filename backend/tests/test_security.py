@@ -383,3 +383,16 @@ def test_production_still_isolates_borrowers_and_keeps_the_borrower_journey(prod
         borrower_browser(b)
         assert b.get(f"/api/cases/{case_id}").status_code == 403
         assert a.get(f"/api/cases/{case_id}/documents").status_code == 200
+
+
+def test_the_onboarding_demo_button_flow_works_for_a_fresh_visitor(anon, second):
+    """The button must open the shared demo through the server (which grants access), not navigate straight to its ID."""
+    demo_id = environment.borrower_id_for("tiruppur_textile")
+    assert anon.get(f"/api/borrowers/{demo_id}").status_code == 401          # no session yet: why a direct jump fails
+    demo = ok(anon.get("/api/demo/borrower"))                                # what the button now calls first
+    profile = ok(anon.get(f"/api/borrowers/{demo['id']}"))                   # the edit page's load, with the granted session
+    assert profile["id"] == demo["id"] and profile["is_synthetic"] is True
+    ok(anon.put(f"/api/borrowers/{demo['id']}", json={**{k: profile[k] for k in VALID}, "rejection_reason": "unknown"}))   # the review step's save
+    case = ok(anon.post("/api/cases", json={"borrower_id": demo["id"], "intent": "rejected"}))
+    assert case["is_synthetic"] is True
+    assert second.get(f"/api/borrowers/{demo['id']}").status_code in (401, 403)  # still no access for anyone else
