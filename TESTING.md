@@ -61,9 +61,11 @@ of a page would have been missed by it.
 ## Known limitations
 
 **Not tested**
-- A successful live call to Claude, Sarvam or Paytm. No credentials were available. Every adapter call was sent to
-  the real API with an invalid key and returned that provider's authentication error, which shows the requests are
-  well-formed; nothing after authentication has been exercised. That check found and fixed one bug (the Sarvam Vision
+- Live AI output. On 15 Nov 2026 one authentication call each succeeded with real keys (Claude: a token-free
+  model lookup; Sarvam: a 5-token chat). Nothing beyond authentication has been exercised: no live explanation,
+  summary, proposal draft, translation, speech or Vision output, and no Paytm call (no Paytm credentials set).
+  Earlier, every adapter call was also sent with an invalid key and returned that provider's authentication error, which shows the requests are
+  well-formed. That check found and fixed one bug (the Sarvam Vision
   call used a parameter the installed SDK does not accept).
 - Voice recording in a browser (needs a microphone), the "Read in Tamil" result in live mode, and Sarvam Vision.
 - Editing lender rules, the advisor value-correction form and the upload button were exercised through the API tests,

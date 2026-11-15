@@ -329,3 +329,22 @@ def test_every_stored_event_is_scrubbed_and_a_key_cut_by_truncation_cannot_survi
         no_secrets_in(row)
     finally:
         conn.close()
+
+
+def test_set_advisor_password_script_leaves_every_other_setting_untouched(tmp_path, monkeypatch, capsys):
+    """Provider keys, comments, blank lines, quoting and order all survive; only the two LOANKART secrets change."""
+    before = ["# my settings", "", "ANTHROPIC_API_KEY=fake-anthropic-value-aaaa", "SARVAM_API_KEY='fake sarvam value bbbb'",
+              "PAYTM_CLIENT_ID=fake-paytm-id-cccc", "PAYTM_ACCESS_TOKEN=\"fake-paytm-token-dddd\"", "LOANKART_AI_MODE=live",
+              "LOANKART_ADVISOR_PASSWORD=old-old-old-old", "# trailing comment", "LOANKART_CORS_ORIGINS=http://localhost:5173"]
+    env = tmp_path / ".env"
+    env.write_text("\n".join(before) + "\n")
+    env.chmod(0o644)
+    new = "another-fresh-passcode-77"
+    assert run_script(monkeypatch, env, new, new) == 0
+    after = env.read_text().splitlines()
+    replaced = {"LOANKART_ADVISOR_PASSWORD=old-old-old-old": f"LOANKART_ADVISOR_PASSWORD={new}"}
+    assert after[:len(before)] == [replaced.get(line, line) for line in before]       # same lines, same order, in place
+    assert len(after) == len(before) + 1 and after[-1].startswith("LOANKART_SECRET_KEY=")  # only the missing key is appended
+    assert stat.S_IMODE(env.stat().st_mode) == 0o600 and not list(tmp_path.glob(".env.tmp-*"))
+    out = capsys.readouterr()
+    assert "fake-" not in out.out + out.err and new not in out.out + out.err

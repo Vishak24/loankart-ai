@@ -12,6 +12,7 @@ import getpass
 import os
 import secrets
 import sys
+import tempfile
 from pathlib import Path
 
 MIN_LENGTH = 12
@@ -19,7 +20,7 @@ DEFAULT_ENV = Path(__file__).resolve().parent.parent / ".env"
 
 
 def write_settings(path: Path, updates: dict[str, str]) -> None:
-    """Replace or append KEY=VALUE lines, keeping every other line. Creates the file owner-only."""
+    """Replace or append KEY=VALUE lines for the given keys only; every other line is kept as it is, in order."""
     lines = path.read_text().splitlines() if path.exists() else []
     seen = set()
     for i, line in enumerate(lines):
@@ -27,10 +28,14 @@ def write_settings(path: Path, updates: dict[str, str]) -> None:
         if key in updates and not line.lstrip().startswith("#"):
             lines[i], _ = f"{key}={updates[key]}", seen.add(key)
     lines += [f"{k}={v}" for k, v in updates.items() if k not in seen]
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write("\n".join(lines) + "\n")
-    os.chmod(path, 0o600)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".env.tmp-")      # mkstemp files are owner-only (0600)
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        os.replace(tmp, path)                                             # atomic: a crash never leaves a half-written .env
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def has_setting(path: Path, name: str) -> bool:
