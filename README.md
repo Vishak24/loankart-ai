@@ -155,10 +155,10 @@ Full detail, configuration and deployment checklist: **[SECURITY.md](SECURITY.md
 **Implemented** (each has automated tests in `backend/tests/test_security.py`)
 - **Advisor sign-in** with a passcode and a signed, expiring, `HttpOnly` session cookie. The old client-set role header is gone and grants nothing.
 - **Per-borrower authorisation.** A browser can only open the profile, case and documents it created; every case, document and borrower route checks this, and a test fails if any non-public route answers an anonymous request.
-- **AI endpoints** need a session (advisor-only for connectivity checks and mode changes) and are **rate limited** per client and by a daily server-wide ceiling, so a visitor cannot burn provider credits. Login, uploads and profile creation have their own limits.
+- **AI endpoints** need a session (advisor-only for connectivity checks and mode changes) and are **rate limited** per client and by a daily server-wide ceiling, so provider spend is capped rather than unbounded. (The ceiling counts requests, not provider calls, and a determined visitor can exhaust it for everyone.) Login, uploads and profile creation have their own limits.
 - **Demo reset and scenario tools** are advisor-only, and absent (404) in production unless explicitly enabled.
 - **Production mode** (`LOANKART_ENV=production`) refuses to start without a signing key, an advisor passcode and exact `https://` CORS origins, hides the API docs and sets `Secure` cookies and HSTS.
-- **Upload hardening:** PDF structure checks, 10 MB / 25-page / 20-per-case caps, refusal of scripts, attachments and encrypted files, and parsing in an isolated process with a timeout, resource limits and no access to API keys.
+- **Upload hardening:** PDF structure checks, 10 MB / 25-page / 20-per-case caps, refusal of scripts, attachments and encrypted files, and parsing in an isolated process with a timeout, resource limits and no API keys in its environment.
 - Request-size limits, CSRF origin check, explicit CORS, security headers, generic error messages, parameterised SQL, keys server-side only, and a commit hook that blocks secrets in `.env.example`.
 
 **Still not production-ready**

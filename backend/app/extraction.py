@@ -176,8 +176,9 @@ def extract_document(path: Path) -> dict[str, Any]:
 MAX_PDF_PAGES = 25
 WORKER_TIMEOUT_S = 20
 # Active content a financial document never needs. A heuristic on the raw bytes: names can be obfuscated, which is why
-# the file is also parsed in an isolated process and served without being executed server-side.
-_ACTIVE = re.compile(rb"/(?:JavaScript|JS|Launch|EmbeddedFile|RichMedia|SubmitForm|ImportData|Encrypt)(?![A-Za-z0-9])")
+# the file is also parsed in an isolated process and served without being executed server-side. No bare "/JS": a JavaScript
+# action always carries "/S /JavaScript", and "/JS" alone matched ~15% of random 5 MB compressed streams (scanned statements).
+_ACTIVE = re.compile(rb"/(?:JavaScript|Launch|EmbeddedFile|RichMedia|SubmitForm|ImportData|Encrypt)(?![A-Za-z0-9])")
 
 
 def validate_pdf_bytes(content: bytes) -> None:

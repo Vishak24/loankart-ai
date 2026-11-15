@@ -15,6 +15,12 @@ def db_path(tmp_path, monkeypatch):
     monkeypatch.setenv("LOANKART_ENV", "development")
     monkeypatch.setenv("LOANKART_SECRET_KEY", "test-secret-key-for-the-test-suite-only-0123456789")
     monkeypatch.setenv("LOANKART_ADVISOR_PASSWORD", PASSCODE)
+    # Pin every optional setting: backend/.env is read at start-up, and a developer's own values must not change test outcomes.
+    for key in ("LOANKART_PUBLIC_DEMO", "LOANKART_ENABLE_DEMO_TOOLS", "LOANKART_TRUST_PROXY", "LOANKART_RATE_DEFAULT",
+                "LOANKART_RATE_AI", "LOANKART_RATE_AI_DAILY", "LOANKART_RATE_LOGIN", "LOANKART_RATE_UPLOAD",
+                "LOANKART_RATE_CREATE", "LOANKART_BORROWER_SESSION_HOURS", "LOANKART_ADVISOR_SESSION_HOURS"):
+        monkeypatch.setenv(key, "")
+    monkeypatch.setenv("LOANKART_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     for key in ("ANTHROPIC_API_KEY", "SARVAM_API_KEY"):      # a developer's real keys must never be used by tests
         monkeypatch.setenv(key, "")
     return path

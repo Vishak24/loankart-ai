@@ -238,13 +238,23 @@ def test_a_clean_pdf_is_accepted_and_hostile_ones_are_refused_and_not_kept(clien
     ok(client.post("/api/demo/load", json={"scenario_id": "tiruppur_textile"}))
     assert upload(client, pdf()).status_code == 201
     kept = len(stored_uploads(db_path))
-    for name, data in (("truncated", pdf()[:-20]), ("javascript", pdf(extra=b"/JS (app.alert(1))")),
+    for name, data in (("truncated", pdf()[:-20]), ("javascript", pdf(extra=b"/S /JavaScript /JS (app.alert(1))")),
                        ("launch", pdf(extra=b"/Launch")), ("attachment", pdf(extra=b"/EmbeddedFile")),
                        ("encrypted", pdf(extra=b"/Encrypt 9 0 R")), ("empty", b""), ("not a pdf", b"MZ" + b"0" * 500),
                        ("too many pages", pdf(pages=extraction.MAX_PDF_PAGES + 1))):
         r = upload(client, data)
         assert r.status_code == 422, name
         assert len(stored_uploads(db_path)) == kept, f"{name}: a refused file was left on disk"
+
+
+def test_a_large_scan_full_of_random_bytes_is_not_mistaken_for_a_script(client):
+    ok(client.post("/api/demo/load", json={"scenario_id": "tiruppur_textile"}))
+    for seed in range(8):                           # random "image" data inside a PDF, as in a multi-MB scanned statement
+        import random
+        noise = random.Random(seed).randbytes(2_000_000).replace(b"/JavaScript", b"").replace(b"/Launch", b"") \
+            .replace(b"/Encrypt", b"").replace(b"/EmbeddedFile", b"").replace(b"/RichMedia", b"") \
+            .replace(b"/SubmitForm", b"").replace(b"/ImportData", b"").replace(b"%%EOF", b"")
+        assert upload(client, pdf(extra=b"/Junk (" + noise + b")")).status_code == 201, seed
 
 
 def test_parsing_is_time_limited_and_a_timeout_removes_the_file(client, db_path, monkeypatch):
