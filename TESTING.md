@@ -1,0 +1,82 @@
+# Testing
+
+## Commands
+
+```bash
+cd backend && .venv/bin/pytest -q            # backend: 123 tests, about 50 seconds
+cd frontend && npm test                      # frontend unit tests: 11
+cd frontend && npm run build                 # TypeScript type-check and production build
+cd frontend && npm run check:journey         # integration: 32 steps through the Vite proxy (both servers running)
+cd frontend && npm run gen:types             # regenerate TypeScript types from the backend's OpenAPI contract
+```
+
+`check:journey` resets demo data before and after it runs.
+
+## Backend tests (`backend/tests/`)
+
+| File | Tests | Covers |
+|---|---|---|
+| `test_calculations.py` | 33 | EMI, amortisation, total interest, FOIR, DSCR, LTV, APR, cash flow, amount and tenure changes, refinancing; invalid inputs, boundaries, rounding. Expected values were worked out independently of the code under test |
+| `test_engines.py` | 47 | Layer separation (investigation code cannot import the ground truth); dataset coherence for all six scenarios; PDFs are real and regenerate byte-identically; every transaction survives the PDF round trip; analysis reproduces ground truth from documents alone; finding structure and wording; all nine lender decisions reachable; ranking determinism; recovery plan; Sarvam Vision output (Markdown or HTML) reaching the parser |
+| `test_api.py` | 19 | Milestone-1 borrower API: validation, persistence, CORS |
+| `test_journey.py` | 2 | The 17 acceptance steps through the API in mock mode, run twice from reset with identical results; reset restores the initial state |
+| `test_workflow_api.py` | 22 | 404/409/422 handling, upload validation and safe storage, persistence across restarts, upgrade of a milestone-1 database, a custom borrower's journey, rejection and human-review paths, Paytm consent, provider failure handling, permissions, knowledge kept apart from policy, concurrent requests, exact ground-truth comparison after a correction, refresh after answers are edited, the approval-language filter |
+
+Tests use a temporary database and file store, force mock mode and blank out any real API keys.
+
+## Frontend tests
+
+- `src/format.test.ts`: rupee formatting, missing values shown as missing, signed changes.
+- `src/onboarding/steps.test.ts`: conditional questions, payload building, "I'm not sure" sent as unknown, validation.
+- `scripts/check-journey.mjs`: every endpoint the pages call, through the dev proxy, checking the fields the pages read.
+- TypeScript types are generated from the backend contract, so a contract change that breaks a page fails `npm run build`.
+
+## Browser verification (15 November 2026)
+
+Not an automated suite. I drove a real Chromium browser with a script that clicks and types by dispatching DOM events,
+against the running dev servers in mock mode, and looked at screenshots of each page. Real mouse and keyboard input
+was not used. An error listener was attached after each page had loaded, so an error thrown during the first render
+of a page would have been missed by it.
+
+- Full journey: landing → onboarding with the demo borrower → documents → consent → investigation (task states seen
+  changing live) → diagnosis, AI summary, three questions answered → restructuring with live recalculation → options,
+  priority change, three-way comparison → proposal, PDF, checkpoints → submission → two queries drafted and answered →
+  simulated offer → escalation.
+- Advisor: queue, case review, accepting a finding, resolving, knowledge capture and approval, lender catalogue.
+- Demo control: ground-truth comparison, three forced lender events, mode switch, connectivity check, loading an
+  alternate borrower, reset.
+- Fresh onboarding filled in field by field (scripted), including validation, "Why we ask" and "I'm not sure".
+- Responsive: 14 pages at 375, 390, 768, 1024 and 1440 px (70 combinations), all collapsible sections opened. No
+  horizontal page scrolling in any of them.
+- No console errors were captured during these runs (see the caveat above).
+- One bug was found this way and fixed: parallel requests from the browser broke database connections. A test now
+  covers it.
+
+## Known limitations
+
+**Not tested**
+- A successful live call to Claude, Sarvam or Paytm. No credentials were available. Every adapter call was sent to
+  the real API with an invalid key and returned that provider's authentication error, which shows the requests are
+  well-formed; nothing after authentication has been exercised. That check found and fixed one bug (the Sarvam Vision
+  call used a parameter the installed SDK does not accept).
+- Voice recording in a browser (needs a microphone), the "Read in Tamil" result in live mode, and Sarvam Vision.
+- Editing lender rules, the advisor value-correction form and the upload button were exercised through the API tests,
+  not clicked in the browser.
+- Safari and Firefox. Screen readers. Keyboard-only navigation was not walked through.
+- There are no automated browser tests; the browser checks above were manual.
+
+**By design in this prototype**
+- No sign-in. The advisor area is gated by a request header, which is not security.
+- The baseline parser reads the layouts this project generates. An arbitrary real bank PDF is stored and marked "not
+  recognised" unless Sarvam Vision is enabled, and that path is untested.
+- Borrowers who onboard themselves get a synthetic document pack built around their answers, not their real documents.
+- The investigation runs as an in-process background task. A backend restart mid-run leaves it "running"; press
+  **Run again**.
+- New case pages have their English text inline. Only landing and onboarding text is in `i18n/en.ts`. There is no
+  Tamil interface.
+- Onboarding does not collect the rejecting lender's name or the rejection date; the synthetic rejection letter
+  supplies them.
+- The refinance lever uses an illustrative rate and tenure, not an evaluated lender product.
+- Bureau scores are not modelled.
+- Chat streaming and tool calling are not used: every AI task is a single structured request.
+- The Paytm Settlement Summary request is implemented but not connected to cases; the Paytm MCP server is not called.

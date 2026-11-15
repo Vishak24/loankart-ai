@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* Design tokens from the UI/UX research blueprint. Colour signals state and action, never decoration. */
+@theme {
+  --font-sans: "Inter", "Noto Sans Tamil", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-ink: #163247;          /* primary text */
+  --color-teal: #11766f;         /* primary action */
+  --color-teal-deep: #0d5f59;    /* primary action, hover */
+  --color-teal-wash: #e9f4f1;    /* teal tint */
+  --color-paper: #f4f7f8;        /* main canvas */
+  --color-surface: #ffffff;
+  --color-line: #d9e3e7;         /* border */
+  --color-muted: #5e707b;        /* secondary text */
+  --color-amber: #b87925;        /* attention */
+  --color-amber-wash: #fbf3e6;
+  --color-success: #187653;
+  --color-success-wash: #e7f3ee;
+  --color-danger: #ad4949;
+  --color-danger-wash: #f8ecec;
+  --breakpoint-sm: 640px;
+  --breakpoint-lg: 1024px;
+}
+
+html {
+  font-variant-numeric: tabular-nums;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: anywhere;
+}
+:focus-visible:not([tabindex="-1"]) {
+  outline: 3px solid var(--color-teal);
+  outline-offset: 2px;
+}
+summary {
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

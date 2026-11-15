@@ -1,0 +1,560 @@
+{
+  "_comment": "FICTIONAL lender policies written for the LoanKart.ai demo. Not real institutions, not real lending criteria. Edit freely; POST /api/demo/reset reloads this file.",
+  "defaults": {
+    "repayment_type": "emi",
+    "min_vintage_years": 2,
+    "min_monthly_revenue": 0,
+    "income_method": "banking",
+    "gst_margin_pct": null,
+    "max_foir_pct": null,
+    "min_dscr": 1.2,
+    "max_active_loans": 5,
+    "max_bounces_12m": 1,
+    "max_late_gst_filings": 3,
+    "gst_required": false,
+    "allowed_purposes": null,
+    "turnover_multiple": null,
+    "collateral_required": false,
+    "collateral_accepted": [],
+    "max_ltv_pct": null,
+    "other_charges": 2500,
+    "allows_balance_transfer": false,
+    "allows_co_applicant": true,
+    "counter_offers": true,
+    "turnaround_days": 7,
+    "required_documents": [
+      "bank_statement",
+      "udyam_certificate"
+    ],
+    "exclusions": [],
+    "effective_date": "2026-10-01",
+    "version": 1,
+    "verification_status": "simulated",
+    "source": "Fictional policy authored for the LoanKart.ai demo environment"
+  },
+  "lenders": [
+    {
+      "id": "ktb",
+      "name": "Kongunadu Traders Bank",
+      "type": "Bank"
+    },
+    {
+      "id": "nvb",
+      "name": "Noyyal Valley Bank",
+      "type": "Bank"
+    },
+    {
+      "id": "tsfb",
+      "name": "Thamirabarani Small Finance Bank",
+      "type": "Small finance bank"
+    },
+    {
+      "id": "phsb",
+      "name": "Palani Hills Sahakari Bank",
+      "type": "Co-operative bank"
+    },
+    {
+      "id": "vcf",
+      "name": "Vaigai Capital Finance",
+      "type": "NBFC"
+    },
+    {
+      "id": "mbc",
+      "name": "Marutham Business Credit",
+      "type": "NBFC"
+    },
+    {
+      "id": "nfc",
+      "name": "Neithal Fincorp",
+      "type": "NBFC"
+    },
+    {
+      "id": "kaf",
+      "name": "Kurinji Asset Finance",
+      "type": "NBFC"
+    }
+  ],
+  "products": [
+    {
+      "id": "ktb-wctl",
+      "lender_id": "ktb",
+      "product_name": "Vyapar Working Capital Term Loan",
+      "category": "working_capital",
+      "min_amount": 300000,
+      "max_amount": 2500000,
+      "min_vintage_years": 3,
+      "min_monthly_revenue": 300000,
+      "income_method": "itr",
+      "max_foir_pct": 55,
+      "min_dscr": 1.25,
+      "max_bounces_12m": 0,
+      "max_late_gst_filings": 2,
+      "gst_required": true,
+      "turnover_multiple": 4,
+      "interest_rate_pct": 13.5,
+      "processing_fee_pct": 1.0,
+      "min_tenure_months": 12,
+      "max_tenure_months": 48,
+      "counter_offers": false,
+      "turnaround_days": 12,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "gstr3b",
+        "pnl",
+        "balance_sheet",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Any EMI return in the last 12 months"
+      ]
+    },
+    {
+      "id": "ktb-lap",
+      "lender_id": "ktb",
+      "product_name": "Sampath Loan Against Property",
+      "category": "lap",
+      "min_amount": 1000000,
+      "max_amount": 20000000,
+      "min_vintage_years": 3,
+      "income_method": "itr",
+      "max_foir_pct": 60,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "residential_property",
+        "commercial_property"
+      ],
+      "max_ltv_pct": 60,
+      "interest_rate_pct": 10.75,
+      "processing_fee_pct": 0.75,
+      "other_charges": 15000,
+      "min_tenure_months": 60,
+      "max_tenure_months": 180,
+      "allows_balance_transfer": true,
+      "turnaround_days": 21,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "pnl",
+        "balance_sheet",
+        "collateral_valuation",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Agricultural land is not accepted as security"
+      ]
+    },
+    {
+      "id": "nvb-od",
+      "lender_id": "nvb",
+      "product_name": "Gold-backed Business Overdraft",
+      "category": "working_capital",
+      "repayment_type": "interest_only",
+      "min_amount": 100000,
+      "max_amount": 2000000,
+      "min_vintage_years": 1,
+      "min_dscr": 1.15,
+      "max_bounces_12m": 2,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "gold"
+      ],
+      "max_ltv_pct": 75,
+      "interest_rate_pct": 11.5,
+      "processing_fee_pct": 0.5,
+      "min_tenure_months": 12,
+      "max_tenure_months": 12,
+      "turnaround_days": 3,
+      "required_documents": [
+        "bank_statement",
+        "collateral_valuation",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Limit is reviewed every 12 months; the full amount falls due if it is not renewed"
+      ]
+    },
+    {
+      "id": "nvb-tl",
+      "lender_id": "nvb",
+      "product_name": "Business Term Loan",
+      "category": "term_loan",
+      "min_amount": 500000,
+      "max_amount": 5000000,
+      "min_vintage_years": 5,
+      "min_monthly_revenue": 500000,
+      "income_method": "itr",
+      "max_foir_pct": 50,
+      "min_dscr": 1.3,
+      "max_bounces_12m": 0,
+      "gst_required": true,
+      "turnover_multiple": 5,
+      "interest_rate_pct": 12.25,
+      "processing_fee_pct": 1.0,
+      "min_tenure_months": 24,
+      "max_tenure_months": 60,
+      "turnaround_days": 14,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "gstr3b",
+        "pnl",
+        "balance_sheet",
+        "cash_flow",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "tsfb-secured",
+      "lender_id": "tsfb",
+      "product_name": "Udyam Secured Business Loan",
+      "category": "secured_business",
+      "min_amount": 300000,
+      "max_amount": 4000000,
+      "max_foir_pct": 80,
+      "max_bounces_12m": 2,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "gold",
+        "residential_property",
+        "commercial_property",
+        "machinery",
+        "fixed_deposit"
+      ],
+      "max_ltv_pct": 70,
+      "interest_rate_pct": 14.0,
+      "processing_fee_pct": 1.25,
+      "min_tenure_months": 12,
+      "max_tenure_months": 60,
+      "allows_balance_transfer": true,
+      "turnaround_days": 8,
+      "required_documents": [
+        "bank_statement",
+        "collateral_valuation",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "tsfb-unsecured",
+      "lender_id": "tsfb",
+      "product_name": "Vyapar Mitra Unsecured Loan",
+      "category": "unsecured_business",
+      "min_amount": 100000,
+      "max_amount": 1000000,
+      "max_foir_pct": 85,
+      "min_dscr": 1.15,
+      "turnover_multiple": 2.5,
+      "interest_rate_pct": 18.5,
+      "processing_fee_pct": 2.0,
+      "min_tenure_months": 12,
+      "max_tenure_months": 36,
+      "turnaround_days": 5,
+      "required_documents": [
+        "bank_statement",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "phsb-tl",
+      "lender_id": "phsb",
+      "product_name": "Small Trader Term Loan",
+      "category": "term_loan",
+      "min_amount": 100000,
+      "max_amount": 1500000,
+      "min_vintage_years": 3,
+      "income_method": "itr",
+      "max_foir_pct": 50,
+      "min_dscr": 1.25,
+      "max_late_gst_filings": 1,
+      "turnover_multiple": 3,
+      "interest_rate_pct": 12.0,
+      "processing_fee_pct": 0.5,
+      "min_tenure_months": 12,
+      "max_tenure_months": 60,
+      "counter_offers": false,
+      "turnaround_days": 18,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "pnl",
+        "balance_sheet",
+        "cash_flow",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "More than one late GST filing in 12 months"
+      ]
+    },
+    {
+      "id": "phsb-gold",
+      "lender_id": "phsb",
+      "product_name": "Gold Loan for Business",
+      "category": "secured_business",
+      "min_amount": 50000,
+      "max_amount": 1500000,
+      "min_vintage_years": 0.5,
+      "min_dscr": 1.1,
+      "max_bounces_12m": 3,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "gold"
+      ],
+      "max_ltv_pct": 75,
+      "interest_rate_pct": 10.9,
+      "processing_fee_pct": 0.25,
+      "other_charges": 1000,
+      "min_tenure_months": 6,
+      "max_tenure_months": 24,
+      "turnaround_days": 2,
+      "required_documents": [
+        "bank_statement",
+        "collateral_valuation"
+      ]
+    },
+    {
+      "id": "vcf-bl",
+      "lender_id": "vcf",
+      "product_name": "Unsecured Business Loan",
+      "category": "unsecured_business",
+      "min_amount": 200000,
+      "max_amount": 3000000,
+      "min_vintage_years": 3,
+      "min_monthly_revenue": 300000,
+      "max_foir_pct": 75,
+      "turnover_multiple": 3,
+      "interest_rate_pct": 19.0,
+      "processing_fee_pct": 2.5,
+      "min_tenure_months": 12,
+      "max_tenure_months": 48,
+      "allows_balance_transfer": true,
+      "turnaround_days": 4,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "vcf-lap",
+      "lender_id": "vcf",
+      "product_name": "Property-backed Business Loan",
+      "category": "lap",
+      "min_amount": 1500000,
+      "max_amount": 30000000,
+      "min_vintage_years": 3,
+      "min_dscr": 1.15,
+      "max_bounces_12m": 2,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "residential_property",
+        "commercial_property"
+      ],
+      "max_ltv_pct": 65,
+      "interest_rate_pct": 12.5,
+      "processing_fee_pct": 1.5,
+      "other_charges": 20000,
+      "min_tenure_months": 36,
+      "max_tenure_months": 180,
+      "allows_balance_transfer": true,
+      "turnaround_days": 15,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "collateral_valuation",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "mbc-gst",
+      "lender_id": "mbc",
+      "product_name": "GST Surrogate Business Loan",
+      "category": "unsecured_business",
+      "min_amount": 200000,
+      "max_amount": 2000000,
+      "income_method": "gst",
+      "gst_margin_pct": 12,
+      "max_foir_pct": 65,
+      "min_dscr": 1.15,
+      "max_late_gst_filings": 1,
+      "gst_required": true,
+      "interest_rate_pct": 17.5,
+      "processing_fee_pct": 2.0,
+      "min_tenure_months": 12,
+      "max_tenure_months": 36,
+      "turnaround_days": 4,
+      "required_documents": [
+        "bank_statement",
+        "gstr3b",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Income is assessed as 12% of GST turnover, whatever the bank statements show"
+      ]
+    },
+    {
+      "id": "mbc-flex",
+      "lender_id": "mbc",
+      "product_name": "Flexi Working Capital Line",
+      "category": "working_capital",
+      "repayment_type": "interest_only",
+      "min_amount": 200000,
+      "max_amount": 1500000,
+      "min_dscr": 1.25,
+      "turnover_multiple": 1.5,
+      "interest_rate_pct": 16.5,
+      "processing_fee_pct": 1.5,
+      "min_tenure_months": 12,
+      "max_tenure_months": 12,
+      "turnaround_days": 3,
+      "required_documents": [
+        "bank_statement",
+        "gstr3b",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Limit is reviewed every 12 months; the full amount falls due if it is not renewed"
+      ]
+    },
+    {
+      "id": "nfc-bl",
+      "lender_id": "nfc",
+      "product_name": "Business Growth Loan",
+      "category": "unsecured_business",
+      "min_amount": 100000,
+      "max_amount": 2500000,
+      "min_vintage_years": 1.5,
+      "max_foir_pct": 90,
+      "min_dscr": 1.1,
+      "max_bounces_12m": 2,
+      "turnover_multiple": 4,
+      "interest_rate_pct": 21.0,
+      "processing_fee_pct": 3.0,
+      "min_tenure_months": 12,
+      "max_tenure_months": 60,
+      "allows_balance_transfer": true,
+      "turnaround_days": 3,
+      "required_documents": [
+        "bank_statement",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "nfc-early",
+      "lender_id": "nfc",
+      "product_name": "Early-stage Business Loan",
+      "category": "unsecured_business",
+      "min_amount": 50000,
+      "max_amount": 500000,
+      "min_vintage_years": 0.5,
+      "min_dscr": 1.3,
+      "max_bounces_12m": 0,
+      "turnover_multiple": 1.5,
+      "interest_rate_pct": 24.0,
+      "processing_fee_pct": 3.0,
+      "min_tenure_months": 6,
+      "max_tenure_months": 24,
+      "turnaround_days": 3,
+      "required_documents": [
+        "bank_statement",
+        "udyam_certificate"
+      ]
+    },
+    {
+      "id": "kaf-equip",
+      "lender_id": "kaf",
+      "product_name": "Equipment and Machinery Finance",
+      "category": "equipment",
+      "min_amount": 300000,
+      "max_amount": 7500000,
+      "max_foir_pct": 80,
+      "allowed_purposes": [
+        "machinery_equipment"
+      ],
+      "interest_rate_pct": 13.0,
+      "processing_fee_pct": 1.0,
+      "min_tenure_months": 24,
+      "max_tenure_months": 60,
+      "turnaround_days": 7,
+      "required_documents": [
+        "bank_statement",
+        "itr",
+        "udyam_certificate"
+      ],
+      "exclusions": [
+        "Only for buying machinery or equipment; the asset bought is hypothecated to the lender"
+      ]
+    },
+    {
+      "id": "kaf-secured",
+      "lender_id": "kaf",
+      "product_name": "Machinery-backed Business Loan",
+      "category": "secured_business",
+      "min_amount": 500000,
+      "max_amount": 5000000,
+      "max_bounces_12m": 2,
+      "collateral_required": true,
+      "collateral_accepted": [
+        "machinery"
+      ],
+      "max_ltv_pct": 50,
+      "interest_rate_pct": 15.0,
+      "processing_fee_pct": 1.5,
+      "min_tenure_months": 12,
+      "max_tenure_months": 48,
+      "allows_balance_transfer": true,
+      "turnaround_days": 9,
+      "required_documents": [
+        "bank_statement",
+        "collateral_valuation",
+        "udyam_certificate"
+      ]
+    }
+  ],
+  "synthetic_history": [
+    {
+      "product_id": "nvb-od",
+      "similar_cases": 14,
+      "offers": 11
+    },
+    {
+      "product_id": "tsfb-secured",
+      "similar_cases": 9,
+      "offers": 6
+    },
+    {
+      "product_id": "tsfb-unsecured",
+      "similar_cases": 12,
+      "offers": 7
+    },
+    {
+      "product_id": "vcf-bl",
+      "similar_cases": 16,
+      "offers": 9
+    },
+    {
+      "product_id": "mbc-flex",
+      "similar_cases": 8,
+      "offers": 5
+    },
+    {
+      "product_id": "nfc-bl",
+      "similar_cases": 21,
+      "offers": 15
+    },
+    {
+      "product_id": "phsb-gold",
+      "similar_cases": 10,
+      "offers": 9
+    },
+    {
+      "product_id": "ktb-lap",
+      "similar_cases": 6,
+      "offers": 3
+    },
+    {
+      "product_id": "vcf-lap",
+      "similar_cases": 7,
+      "offers": 5
+    }
+  ]
+}
