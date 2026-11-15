@@ -1,5 +1,6 @@
 """HTTP routes for the case workflow. Thin: validate, call a service, shape the response. No business rules."""
 
+import logging
 import sqlite3
 from collections.abc import Iterator
 from typing import Annotated, Any
@@ -20,6 +21,7 @@ from .integrations.base import ProviderError
 from .synthetic import PRIMARY_SCENARIO, SCENARIOS
 
 router = APIRouter(prefix="/api")
+log = logging.getLogger("loankart")
 
 
 Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
@@ -46,16 +48,23 @@ def whoami(request: Request, cfg: Cfg) -> Any:
 
 @router.post("/auth/advisor/login", response_model=s.SessionOut, tags=["auth"], dependencies=[login_limit])
 def advisor_login(body: s.LoginIn, request: Request, response: Response, conn: Conn, cfg: Cfg) -> Any:
+    if not cfg.advisor_password:
+        raise Unauthorized("Advisor sign-in is not set up on this server. Run scripts/set_advisor_password.py, then restart.")
     if not security.passcode_matches(cfg, body.password):
+        log.info("advisor sign-in failed")
         db.add_event(conn, "audit", "Advisor sign-in failed", actor="unknown", detail=f"from {security.client_ip(request)}")
         raise Unauthorized("Incorrect passcode.")
     security.grant_advisor(request, response)
+    log.info("advisor signed in")
     db.add_event(conn, "audit", "Advisor signed in", actor="advisor")
     return _session_out(cfg, True)
 
 
 @router.post("/auth/logout", response_model=s.SessionOut, tags=["auth"])
-def logout(response: Response, cfg: Cfg) -> Any:
+def logout(request: Request, response: Response, conn: Conn, cfg: Cfg) -> Any:
+    if security.session_of(request).advisor:
+        log.info("advisor signed out")
+        db.add_event(conn, "audit", "Advisor signed out", actor="advisor")
     security.clear_sessions(response)
     return _session_out(cfg, False)
 

@@ -131,7 +131,7 @@ def clear_sessions(response: Response) -> None:
 
 
 def passcode_matches(settings: Settings, attempt: str) -> bool:
-    return hmac.compare_digest(attempt.encode(), settings.advisor_password.encode())
+    return bool(settings.advisor_password) and hmac.compare_digest(attempt.encode(), settings.advisor_password.encode())
 
 
 # ---------------------------------------------------------------------------------------------- access guards

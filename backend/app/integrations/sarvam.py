@@ -25,6 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from ..redact import redact
 from .base import SCHEMAS, SYSTEM_PROMPT, TASKS, ProviderError
 
 
@@ -41,7 +42,7 @@ class _Sarvam:
             status = getattr(exc, "status_code", None)
             if status in (401, 403):
                 raise ProviderError("Sarvam rejected the API key. Check SARVAM_API_KEY in backend/.env.") from exc
-            raise ProviderError(f"Sarvam API error{f' {status}' if status else ''}: {str(exc)[:200]}") from exc
+            raise ProviderError(f"Sarvam API error{f' {status}' if status else ''}: {redact(exc)[:200]}") from exc
 
 
 class SarvamChatProvider(_Sarvam):

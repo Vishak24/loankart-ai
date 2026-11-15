@@ -28,6 +28,7 @@ from typing import Any
 
 import httpx
 
+from ..redact import redact
 from .base import ProviderError
 
 FIXTURE_NAME = "paytm_fixture.json"
@@ -62,7 +63,7 @@ class LivePaytmEvidence:
         if response.status_code in (401, 403):
             raise ProviderError("Paytm rejected the credentials. Check PAYTM_CLIENT_ID and PAYTM_ACCESS_TOKEN.")
         if response.status_code != 200:
-            raise ProviderError(f"Paytm settlement API returned HTTP {response.status_code}: {response.text[:200]}")
+            raise ProviderError(f"Paytm settlement API returned HTTP {response.status_code}: {redact(response.text)[:200]}")
         try:
             return response.json()
         except ValueError as exc:

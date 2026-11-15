@@ -30,8 +30,8 @@ export function AdvisorGate({ children }: { children: ReactNode }) {
             <Button type="submit" busy={action.busy === "login"}>Sign in</Button>
             {me.data.environment === "development" && (
               <p className="text-sm text-muted">
-                Local demo: the passcode is printed in the backend terminal when it starts. Set <code>LOANKART_ADVISOR_PASSWORD</code> in{" "}
-                <code>backend/.env</code> to choose your own.
+                Local demo: choose your passcode once by running <code>python scripts/set_advisor_password.py</code> in the{" "}
+                <code>backend</code> folder, then restart the backend.
               </p>
             )}
           </form>

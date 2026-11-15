@@ -28,7 +28,7 @@ route. Nothing honours the old `X-LoanKart-Role` header any more.
 | CORS | Explicit origin list, never `*`; credentials allowed only for those origins; only `Content-Type` is an allowed request header | `main.py` |
 | Production start-up | `LOANKART_ENV=production` **refuses to start** unless the signing key (32+ chars) and advisor passcode (12+) are set and CORS lists exact `https://` origins; unknown `LOANKART_ENV` values are an error; `/docs`, `/redoc` and `/openapi.json` are off | `config.production_problems` |
 | Errors and headers | Unexpected errors return a generic message (details only in the advisor-only log); `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` and a restrictive CSP on API JSON; HSTS in production | `security.http_guard` |
-| Secrets | Keys are read by the backend only and never sent to the browser; `.env*` is git-ignored; a tracked pre-commit hook blocks a real value in any `.env.example` and runs gitleaks | `.githooks/pre-commit` |
+| Secrets | Keys are read by the backend only and never sent to the browser; `.env*` is git-ignored; a tracked pre-commit hook blocks a real value in any `.env.example` and runs gitleaks. No advisor passcode is ever generated or printed: `scripts/set_advisor_password.py` takes it through a hidden prompt and writes `backend/.env` (mode 600). Every log record, stored event and provider error is scrubbed of the configured secret values and of key, bearer-token, auth-header and session-cookie shapes; HTTP-client debug logging is held at WARNING | `redact.py`, `scripts/set_advisor_password.py`, `tests/test_secrets.py` |
 | Dependencies | `npm audit` clean; `pip-audit` clean after pinning `fastapi 0.163.0`, `starlette 1.10.0`, `pytest 9.2.0` | `requirements.txt` |
 
 Enable the hook once per clone: `git config core.hooksPath .githooks` (needs [gitleaks](https://github.com/gitleaks/gitleaks) for the second check).
@@ -39,7 +39,7 @@ Enable the hook once per clone: `git config core.hooksPath .githooks` (needs [gi
 |---|---|---|
 | `LOANKART_ENV` | `development` | `production` |
 | `LOANKART_SECRET_KEY` | optional (random per run) | **required**, 32+ random characters |
-| `LOANKART_ADVISOR_PASSWORD` | optional (a random passcode is printed at start-up; set it in `backend/.env` to keep it) | **required**, 12+ characters |
+| `LOANKART_ADVISOR_PASSWORD` | optional, but advisor sign-in is closed until set (never generated or printed; use `scripts/set_advisor_password.py`) | **required**, 12+ characters |
 | `LOANKART_CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | **required**, exact `https://` origin(s) |
 | `LOANKART_PUBLIC_DEMO` | on | off unless set to `1` |
 | `LOANKART_ENABLE_DEMO_TOOLS` | on (advisor-only) | off unless set to `1` (advisor-only) |
@@ -57,6 +57,7 @@ Enable the hook once per clone: `git config core.hooksPath .githooks` (needs [gi
 ## Known limitations (read before trusting this)
 
 - **One shared advisor passcode.** No per-person accounts, no password hashing store, no MFA, no lockout beyond rate limiting, no individual accountability in the audit trail. Anyone with the passcode is every advisor.
+- **Log scrubbing is a safety net, not a licence to log secrets.** It removes the configured values and common key shapes; a credential in some other format that was never configured would not be recognised. The advisor passcode lives in `backend/.env` as plain text (owner-only file), not as a hash.
 - **Sessions are stateless signed cookies.** They cannot be revoked server-side before they expire (4 h advisor, 12 h borrower); rotating `LOANKART_SECRET_KEY` invalidates all of them.
 - **Borrower access is possession of a browser session.** Clear cookies or switch device and the borrower loses access to their case; there is no recovery flow and no borrower sign-in.
 - **The shared demo case is shared.** When `LOANKART_PUBLIC_DEMO=1`, every visitor works on the same synthetic case and can change it for the others.

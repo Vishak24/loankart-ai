@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .redact import redact
+
 SCHEMA_VERSION = 2   # bump when the seed or table shapes change: derived tables are rebuilt on start-up
 
 SCHEMA = """
@@ -218,10 +220,10 @@ def delete_documents(conn: sqlite3.Connection, case_id: str, source: str) -> Non
 
 def add_event(conn: sqlite3.Connection, kind: str, title: str, *, case_id: str | None = None, actor: str = "system",
               detail: str = "", payload: dict[str, Any] | None = None, simulated: bool = False) -> None:
-    conn.execute(
+    conn.execute(                                    # every stored event is scrubbed here, whatever the caller passed
         "INSERT INTO events (case_id, kind, actor, title, detail, payload, simulated, created_at)"
         " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (case_id, kind, actor, title, detail, json.dumps(payload) if payload else None, int(simulated), _now()))
+        (case_id, kind, actor, redact(title), redact(detail), redact(json.dumps(payload)) if payload else None, int(simulated), _now()))
     conn.commit()
 
 

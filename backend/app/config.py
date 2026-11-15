@@ -49,7 +49,7 @@ class Settings:
     environment: str = "development"
     secret_key: str = ""                 # signs session cookies
     advisor_password: str = ""           # the advisor sign-in passcode
-    secrets_are_ephemeral: bool = False  # development only: generated at start-up because none was configured
+    secrets_are_ephemeral: bool = False  # development only: the signing key was generated at start-up (never printed)
     public_demo: bool = True             # may anyone open the shared synthetic demo case?
     demo_tools: bool = True              # reset / scenario / log endpoints exist (advisor-only either way)
     trust_proxy: bool = False            # take the client address from X-Forwarded-For (only behind your own proxy)
@@ -67,7 +67,7 @@ class Settings:
         return self.environment == "production"
 
 
-_EPHEMERAL: dict[str, str] = {}      # one generated value per process, so repeated get_settings() calls agree
+_EPHEMERAL: dict[str, str] = {}      # the generated development signing key, one per process so repeated get_settings() calls agree
 
 
 def _number(raw: str | None, default: int) -> int:
@@ -86,7 +86,7 @@ def production_problems(s: "Settings") -> list[str]:
     problems = []
     if len(s.secret_key) < 32 or s.secrets_are_ephemeral:
         problems.append("LOANKART_SECRET_KEY must be set to a random value of at least 32 characters")
-    if len(s.advisor_password) < 12 or s.secrets_are_ephemeral:
+    if len(s.advisor_password) < 12:
         problems.append("LOANKART_ADVISOR_PASSWORD must be set to a passcode of at least 12 characters")
     origins = s.cors_origins
     if not origins or any(o == "*" or not o.startswith("https://") for o in origins):
@@ -103,11 +103,9 @@ def get_settings() -> Settings:
     prod = mode == "production"
     ephemeral = False
     secret_key, advisor_password = env("LOANKART_SECRET_KEY") or "", env("LOANKART_ADVISOR_PASSWORD") or ""
-    if not prod:                      # development: a missing secret is generated, never a fixed default
-        if not secret_key:
-            secret_key, ephemeral = _EPHEMERAL.setdefault("secret", secrets.token_urlsafe(32)), True
-        if not advisor_password:
-            advisor_password, ephemeral = _EPHEMERAL.setdefault("passcode", secrets.token_urlsafe(9)), True
+    if not prod and not secret_key:   # development: a missing signing key is generated (sessions end on restart), never a fixed default
+        secret_key, ephemeral = _EPHEMERAL.setdefault("secret", secrets.token_urlsafe(32)), True
+    # A missing advisor passcode is never generated or shown: advisor sign-in stays closed until scripts/set_advisor_password.py is run.
     db_path = Path(env("LOANKART_DB_PATH") or BACKEND_DIR / "data" / "loankart.db")
     origins = env("LOANKART_CORS_ORIGINS") or DEFAULT_CORS
     mode_ai = (env("LOANKART_AI_MODE") or "mock").strip().lower()

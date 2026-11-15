@@ -10,7 +10,7 @@ cd frontend && npm run dev -- --host 127.0.0.1
 ```
 
 Open http://127.0.0.1:5173. Before presenting, open http://127.0.0.1:5173/demo-control, sign in with the advisor passcode
-(`LOANKART_ADVISOR_PASSWORD` in `backend/.env`, or the one printed in the backend terminal at start-up) and press
+(the one you set with `python scripts/set_advisor_password.py`, stored as `LOANKART_ADVISOR_PASSWORD` in `backend/.env`) and press
 **Reset all demo data → Yes, reset everything**. The borrower journey itself needs no sign-in; the advisor workspace (step 19 onwards) asks for the passcode once.
 
 ## The primary borrower

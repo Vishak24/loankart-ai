@@ -14,6 +14,7 @@ from typing import Any
 
 from .. import db
 from ..config import Settings
+from ..redact import redact
 from .base import ProviderError
 from .mock import MockAIProvider
 
@@ -68,7 +69,7 @@ class AIService:
         return [available[name] for name in order if available[name]]
 
     def _log(self, title: str, detail: str, case_id: str | None = None) -> None:
-        db.add_event(self.conn, "log", title, case_id=case_id, actor="ai-service", detail=detail[:600])
+        db.add_event(self.conn, "log", title, case_id=case_id, actor="ai-service", detail=redact(detail)[:600])
 
     # ---- reasoning
 
@@ -157,7 +158,7 @@ class AIService:
                 LivePaytmEvidence(s.paytm_merchant_id, s.paytm_client_id, s.paytm_access_token).settlement_summary("2026-11-01")
                 row["detail"] = "Settlement Summary API answered. Cases still use the synthetic fixture."
             except Exception as exc:
-                row["state"], row["detail"] = "error", str(exc)[:300]
+                row["state"], row["detail"] = "error", redact(exc)[:300]
                 self._log("Connectivity check failed: Paytm", row["detail"])
         return row
 
@@ -171,7 +172,7 @@ class AIService:
                 try:
                     state, detail = "ok", ping()
                 except Exception as exc:
-                    state, detail = "error", str(exc)[:300]
+                    state, detail = "error", redact(exc)[:300]
                     self._log(f"Connectivity check failed: {name}", detail)
             elif key and check:
                 detail = "Credentials found. No zero-cost check exists for this service; it is exercised on first use."

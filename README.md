@@ -125,7 +125,7 @@ cd frontend && npm run dev -- --host 127.0.0.1
 Open http://127.0.0.1:5173. Keep the backend on `127.0.0.1`; see the security notes before binding it elsewhere.
 
 **Advisor and demo-control pages ask for a passcode.** Set `LOANKART_ADVISOR_PASSWORD` in `backend/.env` (and `LOANKART_SECRET_KEY`
-so sessions survive restarts). If you set neither, a random passcode is printed in the backend terminal at start-up.
+so sessions survive restarts). The easy way: from `backend/`, run `python scripts/set_advisor_password.py`. It asks twice with hidden input, writes both settings to `backend/.env` (mode 600) and prints neither. Until a passcode is set, advisor sign-in stays closed; no passcode is ever generated or shown, and credentials never appear in logs.
 The borrower demo (landing page → "Open the demo case") needs no sign-in.
 
 ## Test

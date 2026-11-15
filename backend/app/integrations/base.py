@@ -5,9 +5,15 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
+from ..redact import redact
+
 
 class ProviderError(Exception):
-    """A provider call failed or returned something unusable. Callers fall back; they never crash."""
+    """A provider call failed or returned something unusable. Callers fall back; they never crash.
+    The message is scrubbed of credentials at creation, so it is safe to log, store and show."""
+
+    def __init__(self, message: object = "") -> None:
+        super().__init__(redact(message))
 
 
 class NarrativeDraft(BaseModel):
