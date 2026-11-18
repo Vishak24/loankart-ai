@@ -131,8 +131,8 @@ The borrower demo (landing page → "Open the demo case") needs no sign-in.
 ## Test
 
 ```bash
-cd backend && .venv/bin/pytest -q            # 159 tests: engines, API, journey run twice from reset, security
-cd frontend && npm test                      # 11 unit tests
+cd backend && .venv/bin/pytest -q            # 181 tests: engines, API, journey run twice from reset, security
+cd frontend && npm test                      # 24 unit tests
 cd frontend && npm run build                 # type-check + production build
 # 33-step journey through the dev proxy. It RESETS demo data: run it against a throw-away backend (temp DB, own ports).
 cd frontend && LOANKART_ADVISOR_PASSWORD=<the backend's passcode> npm run check:journey -- http://127.0.0.1:<frontend port>

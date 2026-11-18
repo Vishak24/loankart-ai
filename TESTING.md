@@ -3,8 +3,8 @@
 ## Commands
 
 ```bash
-cd backend && .venv/bin/pytest -q            # backend: 159 tests, about 55 seconds
-cd frontend && npm test                      # frontend unit tests: 11
+cd backend && .venv/bin/pytest -q            # backend: 181 tests, about 65 seconds
+cd frontend && npm test                      # frontend unit tests: 24
 cd frontend && npm run build                 # TypeScript type-check and production build
 cd frontend && LOANKART_ADVISOR_PASSWORD=... npm run check:journey -- <frontend url>   # integration: 33 steps through the Vite proxy
 cd frontend && npm run gen:types             # regenerate TypeScript types from the backend's OpenAPI contract
